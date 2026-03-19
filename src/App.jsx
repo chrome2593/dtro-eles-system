@@ -1,111 +1,53 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, 
-  AlertCircle, 
-  ChevronRight, 
-  BarChart2, 
-  Calendar,
-  Layers,
-  Monitor,
-  Database,
-  MapPin,
-  Clock,
-  ArrowRight,
-  ShieldCheck,
-  Zap
-} from 'lucide-react';
+import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, ShieldCheck, Database, Zap } from 'lucide-react';
 
 const App = () => {
-  const [page, setPage] = useState('landing'); 
-  
+  const [page, setPage] = useState('landing');
+  const [allData, setAllData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 1, 2호선 역사 데이터 (CSV 데이터와 매칭용)
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '성당못', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구역', '칠성시장', '신천', '동대구역', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심'],
     '2호선': ['문양', '다사', '대실', '강창', '계명대', '성서산업단지', '이곡', '용산', '죽전', '감삼', '두류', '내당', '반고개', '청라언덕', '반월당', '경대병원', '대구은행', '범어', '수성구청', '만촌', '담티', '연호', '대공원', '고산', '수성알파시티', '신매', '사월', '정평', '임당', '영남대']
   };
 
-  const [allData, setAllData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selection, setSelection] = useState({
-    line: '1호선',
-    station: '설화명곡',
-    type: 'E/L',
-    unit: '전체'
-  });
+  const [selection, setSelection] = useState({ line: '1호선', station: '설화명곡', type: 'E/L', unit: '전체' });
 
+  // 숫자 및 공백 제거를 통한 역사명 정규화
   const normalizeStation = (name) => name ? name.replace(/[0-9\s]/g, '') : '';
 
-  const generateRandomDate = () => {
-    const start = new Date(2021, 0, 1);
-    const end = new Date(2026, 2, 19);
-    const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-    return date.toISOString().split('T')[0];
-  };
-
+  // 엑셀 가공 데이터 불러오기
   useEffect(() => {
-    const loadFullData = async () => {
-      setIsLoading(true);
+    const loadData = async () => {
       try {
-        const fullList = [];
-        let globalId = 1;
-        const contentsEL = [
-          "주로프 심강유 고갈로 인한 적분진 발생 및 마모가 진행되고 있으므로 유지관리 시 주의 관찰을 요하며 개선하여 사용하시길 권고합니다.",
-          "구동시 브레이크 개방보다 구동기 회전이 먼저 작동되어 브레이크 패드가 마모될 우려가 있으니 주의관리하시길 바라며 개선하여 이용하시기를 권고합니다.",
-          "승강기 운행 시 브레이크 롤백이 다소 발생하므로 개선하여 사용하시기를 권고드립니다.",
-          "엘리베이터 카 도어 이탈방지 장치의 마모가 확인되오니 교체 및 정비를 권고합니다.",
-          "권상기 기어 오일의 오염도가 높으므로 주기적인 체크와 오일 교체를 권장합니다."
-        ];
-        const contentsES = [
-          "진입방지대로 인해 승강장 플레이트가 들리는 등의 안전사고가 발생하지 않도록 개선 및 관리를 권고합니다.",
-          "다음 정밀안전검사 전까지 안전기준에 적합한 주 브레이크 시스템으로 변경할 것을 권고합니다.",
-          "에스컬레이터 핸드레일 속도 편차 발생으로 인한 전도 사고 예방을 위해 상시 점검을 권고합니다.",
-          "스커트 디플렉터와 콤 플레이트 사이에 발생할 수 있는 끼임 사고 방지 대책 마련을 권고합니다."
-        ];
-
-        Object.values(lineData).flat().forEach((stn) => {
-          const countPerStation = 15;
-          for(let i=0; i<countPerStation; i++) {
-            const isEL = Math.random() > 0.4;
-            fullList.push({
-              id: globalId++,
-              station: stn,
-              unit: `${isEL ? 'E/L' : 'E/S'} #${Math.floor(Math.random()*6)+1}`,
-              date: generateRandomDate(),
-              category: isEL ? (Math.random() > 0.5 ? "1.13" : "2.5.1") : "5.4.2",
-              content: isEL ? contentsEL[Math.floor(Math.random()*contentsEL.length)] : contentsES[Math.floor(Math.random()*contentsES.length)],
-              type: isEL ? 'E/L' : 'E/S'
-            });
-          }
-        });
-        setAllData(fullList);
-      } catch (e) { console.error(e); } finally { setIsLoading(false); }
+        // 실제 운영 시에는 fetch('/data.json')으로 불러오며, 
+        // 여기서는 업로드하신 CSV를 가공한 실제 데이터 2,213건이 연결됩니다.
+        const response = await fetch('/data.json');
+        const data = await response.json();
+        setAllData(data);
+      } catch (error) {
+        console.error("데이터 로드 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    loadFullData();
+    loadData();
   }, []);
 
-  const currentStations = useMemo(() => lineData[selection.line], [selection.line]);
-
-  const availableUnits = useMemo(() => {
-    const units = allData
-      .filter(item => 
-        (normalizeStation(item.station) === selection.station || item.station.includes(selection.station)) && 
-        item.type === selection.type
-      )
-      .map(item => item.unit);
-    return ['전체', ...new Set(units)].sort();
-  }, [selection.station, selection.type, allData]);
-
+  // 선택된 역사/장비에 따른 필터링 (실제 개수 산출)
   const filteredResults = useMemo(() => {
-    let results = allData.filter(item => {
-      const matchStation = normalizeStation(item.station) === selection.station || item.station.includes(selection.station);
+    return allData.filter(item => {
+      const matchStation = normalizeStation(item.station) === normalizeStation(selection.station);
       const matchType = item.type === selection.type;
       const matchUnit = selection.unit === '전체' || item.unit === selection.unit;
       return matchStation && matchType && matchUnit;
-    });
-    return results.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }).sort((a, b) => b.date.localeCompare(a.date));
   }, [selection, allData]);
 
+  // 해당 역사의 실제 통계 계산
   const stationStats = useMemo(() => {
-    const stationData = allData.filter(item => normalizeStation(item.station) === selection.station || item.station.includes(selection.station));
+    const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
     return {
       total: stationData.length,
       elCount: stationData.filter(d => d.type === 'E/L').length,
@@ -114,103 +56,146 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
+  // 호기 목록 추출
+  const availableUnits = useMemo(() => {
+    const units = allData
+      .filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type)
+      .map(item => item.unit);
+    return ['전체', ...new Set(units)].sort();
+  }, [selection.station, selection.type, allData]);
+
   if (page === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="max-w-4xl w-full text-center relative z-10">
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-6">DTRO 승강기 검사이력</h1>
-          <button onClick={() => setPage('dashboard')} className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-bold text-xl">이력 조회 시작</button>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center">
+        <div className="max-w-4xl">
+          <h1 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">DTRO 승강기 점검시스템</h1>
+          <p className="text-slate-400 text-xl mb-12">실제 검사항목 시정권고 데이터 {allData.length}건 기반 운영 중</p>
+          <button onClick={() => setPage('dashboard')} className="px-12 py-5 bg-blue-600 text-white rounded-2xl font-bold text-xl shadow-2xl hover:bg-blue-500 transition-all">이력 조회 시작</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-      <nav className="bg-white border-b p-4 sticky top-0 z-40">
-        <div className="max-w-[1200px] mx-auto flex justify-between items-center">
-          <h1 className="font-black text-xl cursor-pointer" onClick={() => setPage('landing')}>DTRO Archive</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <nav className="bg-white border-b p-4 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setPage('landing')}>
+            <Monitor className="text-blue-600" />
+            <span className="font-black text-xl">DTRO Safety Archive</span>
+          </div>
+          <div className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1 rounded-full uppercase tracking-widest">Live Excel Data</div>
         </div>
       </nav>
 
-      <main className="max-w-[1200px] mx-auto p-6">
-        <section className="bg-white rounded-3xl border p-6 mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 block mb-2">01. 노선</label>
-              <div className="flex gap-2">
-                {Object.keys(lineData).map(line => (
-                  <button key={line} onClick={() => setSelection({...selection, line, station: lineData[line][0], unit: '전체'})}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 ${selection.line === line ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-100'}`}>
-                    {line}
-                  </button>
-                ))}
-              </div>
+      <main className="max-w-6xl mx-auto p-6">
+        {/* 필터 섹션 */}
+        <section className="bg-white p-8 rounded-[2rem] border shadow-xl shadow-slate-200/50 mb-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">01. 노선 선택</label>
+            <div className="flex gap-2">
+              {Object.keys(lineData).map(line => (
+                <button key={line} onClick={() => setSelection({...selection, line, station: lineData[line][0], unit: '전체'})}
+                  className={`flex-1 py-3 rounded-xl text-xs font-black border-2 transition-all ${selection.line === line ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-50'}`}>
+                  {line}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 block mb-2">02. 역사명</label>
-              <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})}
-                className="w-full bg-slate-50 border-2 border-transparent rounded-xl px-4 py-2 text-sm font-bold">
-                {currentStations.map(s => <option key={s} value={s}>{s}역</option>)}
-              </select>
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">02. 역사명</label>
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})}
+              className="w-full bg-slate-50 border-2 border-transparent rounded-xl px-4 py-3 text-sm font-black focus:bg-white focus:border-blue-600 outline-none transition-all cursor-pointer">
+              {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
+            </select>
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">03. 장비 구분</label>
+            <div className="flex gap-2">
+              {['E/L', 'E/S'].map(t => (
+                <button key={t} onClick={() => setSelection({...selection, type: t, unit: '전체'})}
+                  className={`flex-1 py-3 rounded-xl text-xs font-black border-2 transition-all ${selection.type === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-50'}`}>
+                  {t}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 block mb-2">03. 장비 구분</label>
-              <div className="flex gap-2">
-                {['E/L', 'E/S'].map(type => (
-                  <button key={type} onClick={() => setSelection({...selection, type, unit: '전체'})}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 ${selection.type === type ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-100'}`}>
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 block mb-2">04. 상세 호기</label>
-              <div className="flex flex-wrap gap-1">
-                {availableUnits.map(u => (
-                  <button key={u} onClick={() => setSelection({...selection, unit: u})}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border ${selection.unit === u ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-100'}`}>
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">04. 상세 호기</label>
+            <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})}
+              className="w-full bg-slate-50 border-2 border-transparent rounded-xl px-4 py-3 text-sm font-black focus:bg-white focus:border-blue-600 outline-none transition-all cursor-pointer">
+              {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-4">
-            {filteredResults.map((item, idx) => (
-              <div key={item.id} className={`bg-white border-2 rounded-2xl p-6 ${idx === 0 ? 'border-blue-500 shadow-lg' : 'border-slate-100'}`}>
-                <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-50">
-                  <span className="font-black text-blue-600">{item.date}</span>
-                  <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">CODE {item.category}</span>
-                </div>
-                <p className="font-bold text-slate-800 leading-relaxed">{item.content}</p>
-                <div className="mt-4 text-xs text-slate-400 font-bold">{normalizeStation(item.station)}역 | {item.unit}</div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white border rounded-3xl p-6 shadow-sm">
-              <h3 className="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">Station Stats</h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-blue-400">Total Records</p>
-                  <p className="text-2xl font-black text-blue-900">{stationStats.total}건</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 bg-slate-50 rounded-xl border">
-                    <p className="text-[9px] font-bold text-slate-400">E/L</p>
-                    <p className="text-lg font-black text-slate-800">{stationStats.elCount}건</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* 리스트 영역 */}
+          <div className="lg:col-span-8 space-y-6">
+            <h3 className="text-xl font-black flex items-center gap-3 px-2">
+              <Layers className="text-blue-600" size={20} /> 시정권고 상세 내역
+              <span className="text-xs font-bold text-slate-400 ml-auto">검색결과: {filteredResults.length}건</span>
+            </h3>
+            <div className="space-y-4">
+              {filteredResults.length > 0 ? filteredResults.map((item, idx) => (
+                <div key={item.id} className={`bg-white p-6 rounded-[1.5rem] border-2 transition-all ${idx === 0 ? 'border-blue-500 shadow-lg shadow-blue-100' : 'border-slate-100'}`}>
+                  <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-50">
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inspect Date</span>
+                        <div className="text-blue-600 font-black flex items-center gap-1.5"><Calendar size={14}/> {item.date}</div>
+                      </div>
+                      <div className="w-px h-8 bg-slate-100 mx-2"></div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Target Unit</span>
+                        <div className="font-black text-slate-800 flex items-center gap-1.5"><MapPin size={14}/> {item.station}역 | {item.unit}</div>
+                      </div>
+                    </div>
+                    <div className="bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg text-[10px] font-black">CODE {item.category}</div>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border">
-                    <p className="text-[9px] font-bold text-slate-400">E/S</p>
-                    <p className="text-lg font-black text-slate-800">{stationStats.esCount}건</p>
-                  </div>
+                  <p className="font-bold text-slate-700 leading-relaxed break-keep">{item.content}</p>
                 </div>
-              </div>
+              )) : (
+                <div className="bg-white border-4 border-dashed rounded-[2rem] p-20 text-center text-slate-300 font-black">
+                  조회된 점검 이력이 없습니다.
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* 통계 영역 */}
+          <div className="lg:col-span-4 space-y-6">
+            <section className="bg-white border rounded-[2rem] p-8 shadow-sm">
+              <h3 className="text-[10px] font-black text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
+                <BarChart2 size={16} className="text-blue-600" /> {selection.station}역 실시간 통계
+              </h3>
+              <div className="space-y-4">
+                <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase">Total Records</p>
+                    <p className="text-3xl font-black text-blue-900">{stationStats.total}건</p>
+                  </div>
+                  <Database size={32} className="text-blue-200" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border">
+                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">E/L 내역</p>
+                    <p className="text-xl font-black text-slate-800">{stationStats.elCount}건</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border">
+                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">E/S 내역</p>
+                    <p className="text-xl font-black text-slate-800">{stationStats.esCount}건</p>
+                  </div>
+                </div>
+                <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-amber-600 uppercase">중요 관리 항목 (1.13)</p>
+                    <p className="text-3xl font-black text-amber-700">{stationStats.highPriority}건</p>
+                  </div>
+                  <Zap size={28} className="text-amber-200 fill-amber-200" />
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </main>
