@@ -6,20 +6,23 @@ const App = () => {
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 역사명 정밀 교정 (접미사 '역' 중복 방지 및 역명 통합)
+  // 대구교통공사 최신 노선 데이터 (연장 구간 및 명칭 변경 반영)
   const lineData = {
-    '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '성당못', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심'],
+    '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
     '2호선': ['문양', '다사', '대실', '강창', '계명대', '성서산업단지', '이곡', '용산', '죽전', '감삼', '두류', '내당', '반고개', '청라언덕', '반월당', '경대병원', '대구은행', '범어', '수성구청', '만촌', '담티', '연호', '수성알파시티', '고산', '신매', '사월', '정평', '임당', '영남대']
   };
 
   const [selection, setSelection] = useState({ line: '1호선', station: '설화명곡', type: 'E/L', unit: '전체' });
 
-  // 데이터 통합 및 정규화 로직 (대공원 -> 수성알파시티 통합)
+  // 역명 통합 및 정규화 회로 (과거 데이터 호환성 유지)
   const normalizeStation = (name) => {
     if (!name) return '';
     let n = String(name).replace(/[0-9\s]/g, '');
-    if (n.endsWith('역')) n = n.slice(0, -1); // '역'으로 끝나면 제거하여 통일
-    if (n === '대공원') return '수성알파시티'; // 구 역명을 신 역명에 통합
+    if (n.endsWith('역')) n = n.slice(0, -1); 
+
+    // 역명 변경 및 통합 매핑
+    if (n === '성당못') return '서부정류장';
+    if (n === '대공원') return '수성알파시티';
     return n;
   };
 
@@ -72,7 +75,6 @@ const App = () => {
   if (page === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 text-center relative overflow-hidden">
-        {/* 복구된 배경 그라데이션 */}
         <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-sky-500/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px]"></div>
         
@@ -113,7 +115,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-6xl mx-auto p-6 md:p-10 space-y-10">
-        {/* 필터 설정 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-[1px] bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">01. Line Selection</label>
@@ -165,7 +166,7 @@ const App = () => {
                   <div className="flex justify-between items-start mb-5 pb-5 border-b border-white/5">
                     <div className="space-y-1">
                       <div className="text-sky-400 font-black text-xs flex items-center gap-1.5 uppercase"><Calendar size={14}/> {item.date}</div>
-                      <div className="font-black text-white text-lg opacity-90">{normalizeStation(item.station)}역 <span className="text-slate-600 mx-1">|</span> {item.unit}</div>
+                      <div className="font-black text-white text-lg opacity-90">{selection.station}역 <span className="text-slate-600 mx-1">|</span> {item.unit}</div>
                     </div>
                     <div className="bg-white/5 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-white/5 uppercase">CODE {item.category}</div>
                   </div>
