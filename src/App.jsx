@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ChevronRight } from 'lucide-react';
+import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ShieldCheck, ChevronRight } from 'lucide-react';
 
 const App = () => {
   const [page, setPage] = useState('landing');
@@ -56,20 +56,31 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  // 메인 페이지
+  // 업그레이드된 메인 페이지
   if (page === 'landing') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 flex items-center justify-center p-6 text-center">
-        <div className="max-w-2xl w-full">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center relative overflow-hidden">
+        {/* 디자인된 배경 요소 */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/40 rounded-full blur-[150px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-700/20 rounded-full blur-[120px]"></div>
+        
+        <div className="max-w-xl w-full relative z-10 flex flex-col items-center">
+          {/* 중앙 방패 아이콘 (그래픽 요소) */}
+          <div className="w-48 h-48 mb-10 p-4 border-2 border-slate-700 rounded-full bg-slate-900 shadow-2xl shadow-blue-900/40 flex items-center justify-center relative">
+            <div className="absolute inset-2 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center">
+              <ShieldCheck className="text-white" size={96} />
+            </div>
+          </div>
+          
           <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter break-keep">
             DTRO 승강기 관리
           </h1>
-          <p className="text-slate-400 text-base md:text-lg mb-10 font-medium">
+          <p className="text-slate-400 text-base md:text-lg mb-12 font-medium">
             실제 검사항목 데이터 기반 운영중
           </p>
           <button 
             onClick={() => setPage('dashboard')} 
-            className="w-full md:w-auto px-16 py-5 bg-blue-600 text-white rounded-2xl font-black text-xl shadow-2xl hover:bg-blue-500 active:scale-95 transition-all"
+            className="w-full md:w-auto px-20 py-5 bg-blue-600 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-900/50 hover:bg-blue-500 hover:shadow-blue-900/70 active:scale-95 transition-all"
           >
             조회 시작
           </button>
@@ -78,7 +89,7 @@ const App = () => {
     );
   }
 
-  // 대시보드 페이지
+  // 대시보드 페이지 (기존과 동일)
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       <nav className="bg-white border-b border-slate-200 p-4 sticky top-0 z-50 shadow-sm">
@@ -92,7 +103,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-5xl mx-auto p-4 md:p-6">
-        {/* 필터 설정 */}
         <section className="bg-white p-5 md:p-8 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 mb-6 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="space-y-2">
             <label className="text-xs font-black text-slate-500 uppercase tracking-wider">01. 노선 선택</label>
@@ -133,7 +143,6 @@ const App = () => {
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* 리스트 내역 */}
           <div className="lg:col-span-8 space-y-4">
             <h3 className="text-lg font-black flex items-center gap-2 px-1">
               <Layers className="text-blue-600" size={18} /> 상세 내역
@@ -159,7 +168,6 @@ const App = () => {
             </div>
           </div>
 
-          {/* 실시간 통계 */}
           <div className="lg:col-span-4">
             <section className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm sticky top-24">
               <h3 className="text-sm font-black text-slate-800 mb-5 flex items-center gap-2">
