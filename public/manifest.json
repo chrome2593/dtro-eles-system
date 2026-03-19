@@ -1,0 +1,9 @@
+{
+  "short_name": "DTRO 승강기",
+  "name": "DTRO 승강기 검사이력 시스템",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#020617",
+  "background_color": "#020617"
+}
