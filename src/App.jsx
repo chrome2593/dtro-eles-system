@@ -56,11 +56,9 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  // [최종] 미니멀 메인 페이지
   if (page === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 relative overflow-hidden">
-        {/* 아주 미세한 배경 광원 효과 */}
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]"></div>
         
@@ -86,8 +84,9 @@ const App = () => {
             </span>
           </button>
           
-          <div className="mt-20 text-slate-600 text-[10px] font-bold uppercase tracking-widest opacity-50">
-            Daegu Metro Corp. © 2026
+          {/* 하단 문구 수정 완료 */}
+          <div className="mt-20 text-slate-600 text-[10px] font-bold uppercase tracking-widest opacity-50 text-center">
+            DAEGU TRANSPORTATION CORPORATION © 2026
           </div>
         </div>
       </div>
@@ -109,7 +108,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-5xl mx-auto p-5 md:p-8">
-        {/* 필터 설정 - 단정하게 정돈됨 */}
         <section className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm mb-10 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block px-1">01. Line</label>
