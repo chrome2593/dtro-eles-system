@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ShieldCheck, ChevronRight, TrainFront } from 'lucide-react';
 
 const App = () => {
   const [page, setPage] = useState('landing');
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 대구교통공사 노선 데이터
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '성당못', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구역', '칠성시장', '신천', '동대구역', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심'],
     '2호선': ['문양', '다사', '대실', '강창', '계명대', '성서산업단지', '이곡', '용산', '죽전', '감삼', '두류', '내당', '반고개', '청라언덕', '반월당', '경대병원', '대구은행', '범어', '수성구청', '만촌', '담티', '연호', '대공원', '고산', '수성알파시티', '신매', '사월', '정평', '임당', '영남대']
@@ -56,31 +57,31 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  // 업그레이드된 메인 페이지
+  // 최종 교정된 메인 페이지
   if (page === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center relative overflow-hidden">
-        {/* 디자인된 배경 요소 */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/40 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-700/20 rounded-full blur-[120px]"></div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center relative overflow-hidden">
+        {/* 밝아진 배경 디자인 요소 */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-800/40 rounded-full blur-[150px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]"></div>
         
         <div className="max-w-xl w-full relative z-10 flex flex-col items-center">
-          {/* 중앙 방패 아이콘 (그래픽 요소) */}
-          <div className="w-48 h-48 mb-10 p-4 border-2 border-slate-700 rounded-full bg-slate-900 shadow-2xl shadow-blue-900/40 flex items-center justify-center relative">
-            <div className="absolute inset-2 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center">
-              <ShieldCheck className="text-white" size={96} />
+          {/* 지하철 전동차 아이콘 배지 (그래픽 요소) */}
+          <div className="w-48 h-48 mb-10 p-4 border-2 border-slate-600 rounded-full bg-slate-800 shadow-2xl shadow-blue-800/40 flex items-center justify-center relative active:scale-95 transition-transform cursor-pointer">
+            <div className="absolute inset-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
+              <TrainFront className="text-white" size={96} />
             </div>
           </div>
           
           <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter break-keep">
             DTRO 승강기 관리
           </h1>
-          <p className="text-slate-400 text-base md:text-lg mb-12 font-medium">
+          <p className="text-slate-300 text-base md:text-lg mb-12 font-medium">
             실제 검사항목 데이터 기반 운영중
           </p>
           <button 
             onClick={() => setPage('dashboard')} 
-            className="w-full md:w-auto px-20 py-5 bg-blue-600 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-900/50 hover:bg-blue-500 hover:shadow-blue-900/70 active:scale-95 transition-all"
+            className="w-full md:w-auto px-20 py-5 bg-blue-500 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-800/50 hover:bg-blue-400 hover:shadow-blue-800/70 active:scale-95 transition-all"
           >
             조회 시작
           </button>
