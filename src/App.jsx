@@ -1,25 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Activity, PieChart, TrendingUp } from 'lucide-react';
+import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Activity } from 'lucide-react';
 import {
   Chart as ChartJS,
-  ArcElement,
   CategoryScale,
   LinearScale,
   BarElement,
-  PointElement,
-  LineElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 } from 'chart.js';
-import { Doughnut, Bar, Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 
-// Chart.js 필수 요소 등록
-ChartJS.register(
-  ArcElement, CategoryScale, LinearScale, BarElement, 
-  PointElement, LineElement, Title, Tooltip, Legend, Filler
-);
+// 필수 차트 부품만 등록 (최소화)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const App = () => {
   const [page, setPage] = useState('landing');
@@ -43,68 +36,30 @@ const App = () => {
       } catch (e) {
         console.error("Data Load Error", e);
       } finally {
-        setTimeout(() => setIsLoading(false), 600);
+        setIsLoading(false);
       }
     };
     loadData();
   }, []);
 
-  // [데이터 가공] 차트용 통계 데이터 추출
-  const chartData = useMemo(() => {
+  // [차트 데이터] 역사별 상위 5개만 추출 (경량화)
+  const barChartData = useMemo(() => {
     if (!allData.length) return null;
-
-    // 1. 검사항목 분포 (Donut)
-    const codes = {};
-    allData.forEach(d => { codes[d.category] = (codes[d.category] || 0) + 1; });
-    const topCodes = Object.entries(codes).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-    // 2. 역사별 상위 5개 (Bar)
     const stations = {};
     allData.forEach(d => { 
         const name = normalizeStation(d.station);
         stations[name] = (stations[name] || 0) + 1; 
     });
-    const topStations = Object.entries(stations).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-    // 3. 연도별 추이 (Line)
-    const years = {};
-    allData.forEach(d => {
-      const y = d.date.split('-')[0];
-      years[y] = (years[y] || 0) + 1;
-    });
-    const sortedYears = Object.entries(years).sort((a, b) => a[0].localeCompare(b[0]));
+    const top5 = Object.entries(stations).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
     return {
-      donut: {
-        labels: topCodes.map(c => c[0]),
-        datasets: [{
-          data: topCodes.map(c => c[1]),
-          backgroundColor: ['#38bdf8', '#818cf8', '#34d399', '#fbbf24', '#f472b6'],
-          borderWidth: 0,
-          hoverOffset: 15
-        }]
-      },
-      bar: {
-        labels: topStations.map(s => s[0]),
-        datasets: [{
-          label: '건수',
-          data: topStations.map(s => s[1]),
-          backgroundColor: 'rgba(56, 189, 248, 0.6)',
-          borderRadius: 8,
-        }]
-      },
-      line: {
-        labels: sortedYears.map(y => y[0] + '년'),
-        datasets: [{
-          fill: true,
-          label: '연도별 발생량',
-          data: sortedYears.map(y => y[1]),
-          borderColor: '#38bdf8',
-          backgroundColor: 'rgba(56, 189, 248, 0.1)',
-          tension: 0.4,
-          pointRadius: 4
-        }]
-      }
+      labels: top5.map(s => s[0]),
+      datasets: [{
+        label: '시정권고 건수',
+        data: top5.map(s => s[1]),
+        backgroundColor: 'rgba(56, 189, 248, 0.5)',
+        borderRadius: 10,
+      }]
     };
   }, [allData]);
 
@@ -118,20 +73,18 @@ const App = () => {
   }, [selection, allData]);
 
   if (isLoading) return (
-    <div className="min-h-screen bg-[#141519] flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="text-sky-500 font-black tracking-widest text-[10px] uppercase">Analyzing Archive Data...</p>
+    <div className="min-h-screen bg-[#141519] flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
   if (page === 'landing') {
     return (
       <div className="min-h-screen bg-[#141519] flex items-center justify-center p-8 relative overflow-hidden">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[120px]"></div>
         <div className="max-w-2xl w-full relative z-10 flex flex-col items-center">
           <div className="mb-6 px-4 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full text-sky-400 text-[10px] font-black uppercase tracking-[0.3em]">Infrastructure Management</div>
           <h1 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter leading-tight text-center">DTRO <span className="text-sky-500">승강기 관리</span></h1>
-          <p className="text-slate-500 text-lg md:text-xl mb-16 font-medium text-center leading-relaxed">실제 시정권고 데이터 {allData.length}건 기반 분석 시스템</p>
+          <p className="text-slate-500 text-lg md:text-xl mb-16 font-medium text-center leading-relaxed">실제 시정권고 데이터 {allData.length}건 기반 운영 중</p>
           <button onClick={() => setPage('dashboard')} className="group px-16 py-5 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-2">조회 시작 <ChevronRight className="group-hover:translate-x-1 transition-transform" /></button>
           <div className="mt-32 text-slate-700 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
@@ -148,24 +101,25 @@ const App = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-10 space-y-12">
-        {/* 1. 시각화 대시보드 (Chart Section) */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-[#1f2230] p-6 rounded-[2rem] border border-white/5 shadow-xl">
-            <h4 className="text-xs font-black text-sky-500 mb-6 flex items-center gap-2 uppercase tracking-widest"><PieChart size={14}/> 검사항목 분포</h4>
-            <div className="h-48 flex justify-center">{chartData && <Doughnut data={chartData.donut} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />}</div>
-          </div>
-          <div className="bg-[#1f2230] p-6 rounded-[2rem] border border-white/5 shadow-xl">
-            <h4 className="text-xs font-black text-sky-500 mb-6 flex items-center gap-2 uppercase tracking-widest"><TrendingUp size={14}/> 연도별 추이</h4>
-            <div className="h-48">{chartData && <Line data={chartData.line} options={{ maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } } }} />}</div>
-          </div>
-          <div className="bg-[#1f2230] p-6 rounded-[2rem] border border-white/5 shadow-xl">
-            <h4 className="text-xs font-black text-sky-500 mb-6 flex items-center gap-2 uppercase tracking-widest"><BarChart2 size={14}/> 다빈도 역사 Top 5</h4>
-            <div className="h-48">{chartData && <Bar data={chartData.bar} options={{ indexAxis: 'y', maintainAspectRatio: false, scales: { x: { display: false }, y: { ticks: { color: '#9ba3b8', font: { size: 10 } } } }, plugins: { legend: { display: false } } }} />}</div>
-          </div>
+      <main className="max-w-7xl mx-auto p-6 md:p-10 space-y-8">
+        {/* 상단 통합 차트 카드 (1개로 축소) */}
+        <section className="bg-[#1f2230] p-8 rounded-[2.5rem] border border-white/5 shadow-xl">
+           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+              <div>
+                 <h4 className="text-sm font-black text-sky-500 flex items-center gap-2 uppercase tracking-widest"><Activity size={16}/> 점검 빈도 분석</h4>
+                 <p className="text-xs text-slate-500 mt-1">시정권고가 가장 많이 발생한 상위 5개 역사입니다.</p>
+              </div>
+              <div className="bg-[#141519] px-4 py-2 rounded-xl border border-white/5">
+                 <span className="text-[10px] font-bold text-slate-600 block uppercase">Total Records</span>
+                 <span className="text-lg font-black text-white">{allData.length}건</span>
+              </div>
+           </div>
+           <div className="h-48 md:h-64">
+              {barChartData && <Bar data={barChartData} options={{ indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { ticks: { color: '#9ba3b8', font: { size: 12, weight: 'bold' } }, grid: { display: false } } } }} />}
+           </div>
         </section>
 
-        {/* 2. 필터 섹션 */}
+        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-[1px] bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">01. Line</label>
@@ -200,24 +154,26 @@ const App = () => {
           </div>
         </section>
 
-        {/* 3. 상세 리스트 */}
+        {/* 리스트 영역 */}
         <div className="space-y-6">
            <div className="flex items-center gap-3 px-2">
               <History className="text-sky-500" size={20} />
               <h3 className="text-xl font-black text-white tracking-tight">상세 내역</h3>
-              <span className="text-[10px] font-black text-slate-500 ml-auto uppercase tracking-widest">{filteredResults.length} Items</span>
+              <span className="text-[10px] font-black text-slate-500 ml-auto uppercase tracking-widest">{filteredResults.length} Records Found</span>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredResults.map((item, idx) => (
+              {filteredResults.length > 0 ? filteredResults.map((item, idx) => (
                 <div key={item.id} className={`bg-[#1f2230] p-6 rounded-[2rem] border transition-all ${idx === 0 ? 'border-sky-500 shadow-2xl shadow-sky-500/10' : 'border-white/5'}`}>
                   <div className="flex justify-between items-start mb-4 pb-4 border-b border-white/5">
-                    <div className="text-sky-400 font-black text-xs flex items-center gap-1.5"><Calendar size={12}/> {item.date}</div>
+                    <div className="text-sky-400 font-black text-xs flex items-center gap-1.5 uppercase"><Calendar size={12}/> {item.date}</div>
                     <div className="bg-white/5 text-slate-400 px-2 py-0.5 rounded text-[9px] font-black uppercase">CODE {item.category}</div>
                   </div>
-                  <p className="font-bold text-slate-300 text-sm leading-relaxed mb-4">{item.content}</p>
-                  <div className="text-[10px] font-black text-slate-500 flex items-center gap-2"><MapPin size={10}/> {item.station} | {item.unit}</div>
+                  <p className="font-bold text-slate-300 text-sm leading-relaxed mb-4 break-keep">{item.content}</p>
+                  <div className="text-[10px] font-black text-slate-500 flex items-center gap-2 uppercase tracking-widest"><MapPin size={10}/> {item.station}역 | {item.unit}</div>
                 </div>
-              ))}
+              )) : (
+                <div className="col-span-full py-20 bg-white/5 rounded-[2rem] border-2 border-dashed border-white/5 text-center text-slate-600 font-bold">해당 조건의 데이터가 없습니다.</div>
+              )}
            </div>
         </div>
       </main>
