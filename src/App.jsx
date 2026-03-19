@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, AlertCircle, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ShieldCheck, ChevronRight, TrainFront } from 'lucide-react';
+import { Search, BarChart2, Calendar, Layers, Monitor, MapPin, Database, Zap, ChevronRight } from 'lucide-react';
 
 const App = () => {
   const [page, setPage] = useState('landing');
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 대구교통공사 노선 데이터
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '성당못', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구역', '칠성시장', '신천', '동대구역', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심'],
     '2호선': ['문양', '다사', '대실', '강창', '계명대', '성서산업단지', '이곡', '용산', '죽전', '감삼', '두류', '내당', '반고개', '청라언덕', '반월당', '경대병원', '대구은행', '범어', '수성구청', '만촌', '담티', '연호', '대공원', '고산', '수성알파시티', '신매', '사월', '정평', '임당', '영남대']
@@ -57,144 +56,158 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  // 최종 교정된 메인 페이지
+  // [최종] 미니멀 메인 페이지
   if (page === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center relative overflow-hidden">
-        {/* 밝아진 배경 디자인 요소 */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-800/40 rounded-full blur-[150px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 relative overflow-hidden">
+        {/* 아주 미세한 배경 광원 효과 */}
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]"></div>
         
-        <div className="max-w-xl w-full relative z-10 flex flex-col items-center">
-          {/* 지하철 전동차 아이콘 배지 (그래픽 요소) */}
-          <div className="w-48 h-48 mb-10 p-4 border-2 border-slate-600 rounded-full bg-slate-800 shadow-2xl shadow-blue-800/40 flex items-center justify-center relative active:scale-95 transition-transform cursor-pointer">
-            <div className="absolute inset-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-              <TrainFront className="text-white" size={96} />
-            </div>
+        <div className="max-w-2xl w-full relative z-10 flex flex-col items-center">
+          <div className="mb-6 px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
+            <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em]">Safety Infrastructure Archive</span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter break-keep">
-            DTRO 승강기 관리
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tighter leading-tight break-keep">
+            DTRO <span className="text-blue-500">승강기 관리</span>
           </h1>
-          <p className="text-slate-300 text-base md:text-lg mb-12 font-medium">
+          
+          <p className="text-slate-400 text-base md:text-lg mb-16 font-medium leading-relaxed opacity-80">
             실제 검사항목 데이터 기반 운영중
           </p>
+          
           <button 
             onClick={() => setPage('dashboard')} 
-            className="w-full md:w-auto px-20 py-5 bg-blue-500 text-white rounded-3xl font-black text-xl shadow-2xl shadow-blue-800/50 hover:bg-blue-400 hover:shadow-blue-800/70 active:scale-95 transition-all"
+            className="group relative px-16 py-5 bg-white text-slate-900 rounded-full font-black text-lg transition-all hover:bg-blue-50 active:scale-95 shadow-2xl overflow-hidden"
           >
-            조회 시작
+            <span className="relative z-10 flex items-center gap-2">
+              조회 시작 <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </span>
           </button>
+          
+          <div className="mt-20 text-slate-600 text-[10px] font-bold uppercase tracking-widest opacity-50">
+            Daegu Metro Corp. © 2026
+          </div>
         </div>
       </div>
     );
   }
 
-  // 대시보드 페이지 (기존과 동일)
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <nav className="bg-white border-b border-slate-200 p-4 sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-100">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setPage('landing')}>
-            <Monitor className="text-blue-600" size={20} />
-            <span className="font-black text-lg tracking-tight">DTRO Archive</span>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('landing')}>
+            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
+              <Monitor className="text-white" size={16} />
+            </div>
+            <span className="font-black text-lg tracking-tight text-slate-900">DTRO Archive</span>
           </div>
-          <button onClick={() => setPage('landing')} className="text-xs font-bold text-slate-400">나가기</button>
+          <button onClick={() => setPage('landing')} className="text-[11px] font-black text-slate-400 hover:text-slate-900 transition-colors uppercase tracking-widest">Exit</button>
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto p-4 md:p-6">
-        <section className="bg-white p-5 md:p-8 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 mb-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">01. 노선 선택</label>
-            <div className="flex gap-1.5">
+      <main className="max-w-5xl mx-auto p-5 md:p-8">
+        {/* 필터 설정 - 단정하게 정돈됨 */}
+        <section className="bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-100 shadow-sm mb-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block px-1">01. Line</label>
+            <div className="flex gap-1.5 p-1 bg-slate-50 rounded-2xl">
               {Object.keys(lineData).map(line => (
                 <button key={line} onClick={() => setSelection({...selection, line, station: lineData[line][0], unit: '전체'})}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black border-2 transition-all ${selection.line === line ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-50'}`}>
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${selection.line === line ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                   {line}
                 </button>
               ))}
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">02. 역사명</label>
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block px-1">02. Station</label>
             <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})}
-              className="w-full bg-slate-50 border-2 border-transparent rounded-xl px-3 py-2.5 text-sm font-black focus:bg-white focus:border-blue-600 outline-none cursor-pointer">
+              className="w-full bg-slate-50 border border-transparent rounded-2xl px-4 py-3 text-sm font-black focus:bg-white focus:border-blue-500 outline-none cursor-pointer transition-all">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">03. 장비 구분</label>
-            <div className="flex gap-1.5">
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block px-1">03. Type</label>
+            <div className="flex gap-1.5 p-1 bg-slate-50 rounded-2xl">
               {['E/L', 'E/S'].map(t => (
                 <button key={t} onClick={() => setSelection({...selection, type: t, unit: '전체'})}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-black border-2 transition-all ${selection.type === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-50'}`}>
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${selection.type === t ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
                   {t}
                 </button>
               ))}
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-wider">04. 상세 호기</label>
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block px-1">04. Unit</label>
             <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})}
-              className="w-full bg-slate-50 border-2 border-transparent rounded-xl px-3 py-2.5 text-sm font-black focus:bg-white focus:border-blue-600 outline-none cursor-pointer">
+              className="w-full bg-slate-50 border border-transparent rounded-2xl px-4 py-3 text-sm font-black focus:bg-white focus:border-blue-500 outline-none cursor-pointer transition-all">
               {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-4">
-            <h3 className="text-lg font-black flex items-center gap-2 px-1">
-              <Layers className="text-blue-600" size={18} /> 상세 내역
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full ml-auto">{filteredResults.length}건</span>
-            </h3>
-            <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-end justify-between px-2 mb-2">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">상세 내역</h3>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{filteredResults.length} Records found</span>
+            </div>
+            
+            <div className="space-y-4">
               {filteredResults.map((item, idx) => (
-                <div key={item.id} className={`bg-white p-5 rounded-2xl border-2 transition-all ${idx === 0 ? 'border-blue-500 shadow-lg shadow-blue-50' : 'border-slate-100'}`}>
-                  <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-50">
-                    <div className="flex flex-col gap-1">
-                      <div className="text-blue-600 font-black text-sm flex items-center gap-1.5 whitespace-nowrap">
+                <div key={item.id} className={`bg-white p-7 rounded-[2rem] border transition-all ${idx === 0 ? 'border-blue-100 shadow-xl shadow-blue-500/5' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                  <div className="flex justify-between items-start mb-5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-blue-600 font-black text-sm">
                         <Calendar size={14}/> {item.date}
                       </div>
-                      <div className="font-black text-slate-800 text-xs flex items-center gap-1.5">
-                        <MapPin size={12} className="text-slate-400"/> {item.station} | {item.unit}
+                      <div className="font-black text-slate-800 text-sm opacity-90">
+                        {item.station}역 | {item.unit}
                       </div>
                     </div>
-                    <div className="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[9px] font-black whitespace-nowrap">CODE {item.category}</div>
+                    <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-full text-[9px] font-black tracking-widest border border-slate-100">
+                      CODE {item.category}
+                    </div>
                   </div>
-                  <p className="font-bold text-slate-700 text-sm leading-relaxed break-keep">{item.content}</p>
+                  <p className="font-bold text-slate-600 text-[15px] leading-relaxed break-keep">
+                    {item.content}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="lg:col-span-4">
-            <section className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm sticky top-24">
-              <h3 className="text-sm font-black text-slate-800 mb-5 flex items-center gap-2">
-                <BarChart2 size={16} className="text-blue-600" /> {selection.station}역 실시간 통계
+            <section className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm sticky top-28">
+              <h3 className="text-xs font-black text-slate-400 mb-8 uppercase tracking-[0.2em] px-1">
+                {selection.station} Stats
               </h3>
-              <div className="space-y-3">
-                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
-                  <p className="text-[10px] font-black text-blue-400 uppercase mb-1">Total Records</p>
-                  <p className="text-2xl font-black text-blue-900">{stationStats.total}건</p>
+              <div className="space-y-5">
+                <div className="p-6 bg-slate-900 rounded-[2rem] text-white">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</p>
+                  <p className="text-3xl font-black">{stationStats.total}<span className="text-sm font-medium ml-1 opacity-50">건</span></p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 mb-1">E/L</p>
-                    <p className="text-lg font-black text-slate-800">{stationStats.elCount}건</p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">E/L</p>
+                    <p className="text-xl font-black text-slate-800">{stationStats.elCount}</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 mb-1">E/S</p>
-                    <p className="text-lg font-black text-slate-800">{stationStats.esCount}건</p>
+                  <div className="p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">E/S</p>
+                    <p className="text-xl font-black text-slate-800">{stationStats.esCount}</p>
                   </div>
                 </div>
-                <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex items-center justify-between">
+
+                <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-black text-amber-600 uppercase">중요 관리 (1.13)</p>
-                    <p className="text-2xl font-black text-amber-700">{stationStats.highPriority}건</p>
+                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Priority (1.13)</p>
+                    <p className="text-2xl font-black text-blue-600">{stationStats.highPriority}</p>
                   </div>
-                  <Zap size={24} className="text-amber-200 fill-amber-200" />
+                  <Zap size={24} className="text-blue-200 fill-blue-200" />
                 </div>
               </div>
             </section>
