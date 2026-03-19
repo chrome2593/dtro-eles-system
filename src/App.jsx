@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight } from 'lucide-react';
+import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Lock } from 'lucide-react';
 
 const App = () => {
   const [page, setPage] = useState('landing');
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 보안 설정 (원하시는 비밀번호로 수정하세요)
+  const ADMIN_PASSWORD = "3650"; 
 
-  // 대구교통공사 최신 노선 데이터 (연장 구간 및 명칭 변경 반영)
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
     '2호선': ['문양', '다사', '대실', '강창', '계명대', '성서산업단지', '이곡', '용산', '죽전', '감삼', '두류', '내당', '반고개', '청라언덕', '반월당', '경대병원', '대구은행', '범어', '수성구청', '만촌', '담티', '연호', '수성알파시티', '고산', '신매', '사월', '정평', '임당', '영남대']
@@ -14,13 +16,10 @@ const App = () => {
 
   const [selection, setSelection] = useState({ line: '1호선', station: '설화명곡', type: 'E/L', unit: '전체' });
 
-  // 역명 통합 및 정규화 회로 (과거 데이터 호환성 유지)
   const normalizeStation = (name) => {
     if (!name) return '';
     let n = String(name).replace(/[0-9\s]/g, '');
     if (n.endsWith('역')) n = n.slice(0, -1); 
-
-    // 역명 변경 및 통합 매핑
     if (n === '성당못') return '서부정류장';
     if (n === '대공원') return '수성알파시티';
     return n;
@@ -40,6 +39,16 @@ const App = () => {
     };
     loadData();
   }, []);
+
+  // [기능] 비밀번호 확인 절차
+  const handleStartInquiry = () => {
+    const userInput = prompt("시스템 접근 비밀번호를 입력하십시오.");
+    if (userInput === ADMIN_PASSWORD) {
+      setPage('dashboard');
+    } else if (userInput !== null) {
+      alert("비밀번호가 일치하지 않습니다. 관리자에게 문의하십시오.");
+    }
+  };
 
   const filteredResults = useMemo(() => {
     return allData.filter(item => {
@@ -80,19 +89,19 @@ const App = () => {
         
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-6 px-4 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full inline-block">
-            <span className="text-sky-400 text-[10px] font-black uppercase tracking-[0.3em]">Infrastructure Management</span>
+            <span className="text-sky-400 text-[10px] font-black uppercase tracking-[0.3em]">Authorized Personnel Only</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">
             DTRO <span className="text-sky-500">승강기 관리</span>
           </h1>
           <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">
-            실제 검사 데이터 {allData.length}건 기반 운영 중
+            실제 검사 데이터 기반 운영 중
           </p>
           <button 
-            onClick={() => setPage('dashboard')} 
-            className="px-16 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mx-auto shadow-2xl"
+            onClick={handleStartInquiry} 
+            className="px-16 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto shadow-2xl"
           >
-            조회 시작 <ChevronRight />
+            조회 시작 <Lock size={20} className="text-slate-400" />
           </button>
           <div className="mt-32 text-slate-700 text-[10px] font-bold uppercase tracking-[0.4em]">
             DAEGU TRANSPORTATION CORPORATION © 2026
@@ -110,11 +119,12 @@ const App = () => {
             <Monitor className="text-sky-500" size={20} />
             <span className="font-black text-lg tracking-tight">DTRO Archive</span>
           </div>
-          <button onClick={() => setPage('landing')} className="text-[11px] font-black text-slate-500 hover:text-white uppercase tracking-widest border border-white/10 px-4 py-2 rounded-lg">Exit</button>
+          <button onClick={() => setPage('landing')} className="text-[11px] font-black text-slate-500 hover:text-white uppercase tracking-widest border border-white/10 px-4 py-2 rounded-lg">Logout</button>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto p-6 md:p-10 space-y-10">
+        {/* 필터 설정 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-[1px] bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">01. Line Selection</label>
