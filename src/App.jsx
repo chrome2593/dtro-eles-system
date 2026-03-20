@@ -102,7 +102,7 @@ const App = () => {
             DTRO <br />
             <span className="text-indigo-500">승강기 관리</span>
           </h1>
-          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed text-balance">
+          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">
             실제 검사 데이터 기반 운영 중
           </p>
           <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">
@@ -147,16 +147,21 @@ const App = () => {
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-xl">
             <label className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block">01. Line Selection</label>
             <div className="relative flex p-1 bg-slate-950/50 rounded-2xl overflow-hidden h-12">
+              {/* 화이트 블록 및 정밀 위치 계산 */}
               <div 
-                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-indigo-600 rounded-xl transition-transform duration-300 ease-out shadow-lg ${selection.line === '2호선' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}
+                className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-lg"
+                style={{ 
+                  left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', 
+                  width: 'calc(50% - 6px)' 
+                }}
               />
               <button 
                 onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '전체'})}
-                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '1호선' ? 'text-white' : 'text-slate-500'}`}
+                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-500'}`}
               >1호선</button>
               <button 
                 onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '전체'})}
-                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '2호선' ? 'text-white' : 'text-slate-500'}`}
+                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-500'}`}
               >2호선</button>
             </div>
           </div>
@@ -174,19 +179,24 @@ const App = () => {
             <label className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block">03. Equipment & Unit</label>
             <div className="flex gap-2">
               <div className="relative flex p-1 bg-slate-950/50 rounded-2xl overflow-hidden h-12 flex-1">
+                {/* 화이트 블록 및 정밀 위치 계산 */}
                 <div 
-                  className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-indigo-600 rounded-xl transition-transform duration-300 ease-out shadow-lg ${selection.type === 'E/S' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}
+                  className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-lg"
+                  style={{ 
+                    left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', 
+                    width: 'calc(50% - 6px)' 
+                  }}
                 />
                 <button 
                   onClick={() => setSelection({...selection, type: 'E/L', unit: '전체'})}
-                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/L' ? 'text-white' : 'text-slate-500'}`}
+                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-500'}`}
                 >E/L</button>
                 <button 
                   onClick={() => setSelection({...selection, type: 'E/S', unit: '전체'})}
-                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/S' ? 'text-white' : 'text-slate-500'}`}
+                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-500'}`}
                 >E/S</button>
               </div>
-              {/* 호기 선택: 중앙 정렬 및 화이트 텍스트 적용 */}
+              {/* 호기 선택: 중앙 정렬 및 가독성 높은 화이트 텍스트 */}
               <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-950/50 border-2 border-white/5 rounded-2xl px-2 text-[10px] font-black focus:border-indigo-600 outline-none text-white text-center appearance-none cursor-pointer">
                 {availableUnits.map(u => <option key={u} value={u} className="bg-slate-900">{u}</option>)}
               </select>
@@ -200,7 +210,7 @@ const App = () => {
             <CheckCircle size={18} className="text-indigo-400" />
             <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.2em] whitespace-nowrap">역사 요약</span>
           </div>
-          <div className="flex gap-6 items-center text-white">
+          <div className="flex gap-6 items-center">
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Elevator</span>
               <p className={`text-xl font-black transition-colors ${stationStats.elCount === 0 ? 'text-slate-600' : 'text-white'}`}>
@@ -232,7 +242,7 @@ const App = () => {
                     <div className="text-indigo-400 font-black text-xs flex items-center gap-2 uppercase tracking-tight"><Calendar size={14}/> {item.date}</div>
                     <div className="font-black text-white text-lg opacity-90">{selection.station}역 <span className="text-slate-700 mx-1">|</span> {item.unit}</div>
                   </div>
-                  <div className="bg-slate-950/40 text-slate-300 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-white/5 uppercase">CODE {item.category}</div>
+                  <div className="bg-slate-950/40 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-white/5 uppercase">CODE {item.category}</div>
                 </div>
                 <p className="font-bold text-slate-300 text-[16px] leading-[1.8] break-keep">{item.content}</p>
               </div>
