@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Lock } from 'lucide-react';
+import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Lock, X } from 'lucide-react';
 
 const App = () => {
   const [page, setPage] = useState('landing');
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // 보안 설정 (원하시는 비밀번호로 수정하세요)
-  const ADMIN_PASSWORD = "3650"; 
+  // 비밀번호 보안 설정
+  const [isPwModalOpen, setIsPwModalOpen] = useState(false);
+  const [pwInput, setPwInput] = useState("");
+  const ADMIN_PASSWORD = "1234"; // 숫자로만 설정
 
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
@@ -40,13 +42,16 @@ const App = () => {
     loadData();
   }, []);
 
-  // [기능] 비밀번호 확인 절차
-  const handleStartInquiry = () => {
-    const userInput = prompt("시스템 접근 비밀번호를 입력하십시오.");
-    if (userInput === ADMIN_PASSWORD) {
+  // 비밀번호 검증 로직
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (pwInput === ADMIN_PASSWORD) {
+      setIsPwModalOpen(false);
       setPage('dashboard');
-    } else if (userInput !== null) {
-      alert("비밀번호가 일치하지 않습니다. 관리자에게 문의하십시오.");
+      setPwInput("");
+    } else {
+      alert("비밀번호가 일치하지 않습니다.");
+      setPwInput("");
     }
   };
 
@@ -61,9 +66,8 @@ const App = () => {
 
   const stationStats = useMemo(() => {
     const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
-    const total = stationData.length;
     return {
-      total,
+      total: stationData.length,
       highPriority: stationData.filter(d => d.category === '1.13').length
     };
   }, [selection.station, allData]);
@@ -75,17 +79,12 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  if (isLoading) return (
-    <div className="min-h-screen bg-[#141519] flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  if (isLoading) return <div className="min-h-screen bg-[#141519] flex items-center justify-center"><div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 text-center relative overflow-hidden">
         <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-sky-500/10 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[100px]"></div>
         
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-6 px-4 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full inline-block">
@@ -98,7 +97,7 @@ const App = () => {
             실제 검사 데이터 기반 운영 중
           </p>
           <button 
-            onClick={handleStartInquiry} 
+            onClick={() => setIsPwModalOpen(true)} 
             className="px-16 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto shadow-2xl"
           >
             조회 시작 <Lock size={20} className="text-slate-400" />
@@ -107,6 +106,31 @@ const App = () => {
             DAEGU TRANSPORTATION CORPORATION © 2026
           </div>
         </div>
+
+        {/* [보안] 비밀번호 입력 모달 */}
+        {isPwModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md">
+            <div className="bg-[#1f2230] w-full max-w-sm rounded-[2.5rem] p-10 border border-white/10 shadow-3xl relative animate-in fade-in zoom-in duration-300">
+              <button onClick={() => {setIsPwModalOpen(false); setPwInput("");}} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={24}/></button>
+              <h3 className="text-white font-black text-xl mb-2">비밀번호 입력</h3>
+              <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Please Enter Password</p>
+              
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <input 
+                  autoFocus
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pwInput}
+                  onChange={(e) => setPwInput(e.target.value)}
+                  placeholder="••••"
+                  className="w-full bg-[#141519] border-2 border-white/5 rounded-2xl py-5 text-center text-3xl font-black text-sky-500 tracking-[0.5em] focus:border-sky-500 outline-none transition-all placeholder:text-slate-800"
+                />
+                <button type="submit" className="w-full py-4 bg-sky-500 text-white rounded-2xl font-black text-sm hover:bg-sky-400 transition-colors shadow-lg shadow-sky-500/20">확인</button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -115,95 +139,41 @@ const App = () => {
     <div className="min-h-screen bg-[#141519] text-[#e8eaf0] font-sans">
       <nav className="bg-[#141519]/90 backdrop-blur-xl border-b border-white/5 p-5 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('landing')}>
-            <Monitor className="text-sky-500" size={20} />
-            <span className="font-black text-lg tracking-tight">DTRO Archive</span>
-          </div>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('landing')}><Monitor className="text-sky-500" size={20} /><span className="font-black text-lg tracking-tight">DTRO Archive</span></div>
           <button onClick={() => setPage('landing')} className="text-[11px] font-black text-slate-500 hover:text-white uppercase tracking-widest border border-white/10 px-4 py-2 rounded-lg">Logout</button>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto p-6 md:p-10 space-y-10">
-        {/* 필터 설정 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-[1px] bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">01. Line Selection</label>
             <div className="flex gap-2 p-1 bg-[#141519] rounded-xl">
-              {Object.keys(lineData).map(line => (
-                <button key={line} onClick={() => setSelection({...selection, line, station: lineData[line][0], unit: '전체'})}
-                  className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${selection.line === line ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                  {line}
-                </button>
-              ))}
+              {Object.keys(lineData).map(line => (<button key={line} onClick={() => setSelection({...selection, line, station: lineData[line][0], unit: '전체'})} className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${selection.line === line ? 'bg-sky-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{line}</button>))}
             </div>
           </div>
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">02. Station Name</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})}
-              className="w-full bg-[#141519] border-2 border-white/5 rounded-xl px-4 py-3 text-sm font-black focus:border-sky-500 outline-none text-white cursor-pointer">
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})} className="w-full bg-[#141519] border-2 border-white/5 rounded-xl px-4 py-3 text-sm font-black focus:border-sky-500 outline-none text-white cursor-pointer">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
           <div className="bg-[#1f2230] p-8 space-y-4">
             <label className="text-[10px] font-black text-sky-500 uppercase tracking-widest block">03. Equipment Unit</label>
-            <div className="flex gap-2">
-              <div className="flex-[1] flex gap-1 p-1 bg-[#141519] rounded-xl">
-                {['E/L', 'E/S'].map(t => (
-                  <button key={t} onClick={() => setSelection({...selection, type: t, unit: '전체'})}
-                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all ${selection.type === t ? 'bg-[#e8eaf0] text-slate-900 shadow-md' : 'text-slate-500'}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})}
-                className="flex-[1.5] bg-[#141519] border-2 border-white/5 rounded-xl px-2 text-[10px] font-black focus:border-sky-500 outline-none text-slate-300">
-                {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
+            <div className="flex gap-2"><div className="flex-[1] flex gap-1 p-1 bg-[#141519] rounded-xl">{['E/L', 'E/S'].map(t => (<button key={t} onClick={() => setSelection({...selection, type: t, unit: '전체'})} className={`flex-1 py-2.5 rounded-lg text-[10px] font-black transition-all ${selection.type === t ? 'bg-[#e8eaf0] text-slate-900 shadow-md' : 'text-slate-500'}`}>{t}</button>))}</div><select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.5] bg-[#141519] border-2 border-white/5 rounded-xl px-2 text-[10px] font-black focus:border-sky-500 outline-none text-slate-300">{availableUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
           </div>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-8 space-y-6">
-            <div className="flex items-center gap-3 px-2">
-              <History className="text-sky-500" size={20} />
-              <h3 className="text-xl font-black text-white tracking-tight">상세 내역</h3>
-              <span className="text-[10px] font-black text-slate-500 ml-auto uppercase tracking-widest">{filteredResults.length} Records Found</span>
-            </div>
+            <div className="flex items-center gap-3 px-2"><History className="text-sky-500" size={20} /><h3 className="text-xl font-black text-white tracking-tight">상세 내역</h3><span className="text-[10px] font-black text-slate-500 ml-auto uppercase tracking-widest">{filteredResults.length} Records Found</span></div>
             <div className="space-y-4">
               {filteredResults.map((item, idx) => (
-                <div key={item.id} className={`bg-[#1f2230] p-7 rounded-[1.5rem] border transition-all ${idx === 0 ? 'border-sky-500 shadow-2xl shadow-sky-500/10' : 'border-white/5 hover:border-white/10'}`}>
-                  <div className="flex justify-between items-start mb-5 pb-5 border-b border-white/5">
-                    <div className="space-y-1">
-                      <div className="text-sky-400 font-black text-xs flex items-center gap-1.5 uppercase"><Calendar size={14}/> {item.date}</div>
-                      <div className="font-black text-white text-lg opacity-90">{selection.station}역 <span className="text-slate-600 mx-1">|</span> {item.unit}</div>
-                    </div>
-                    <div className="bg-white/5 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-white/5 uppercase">CODE {item.category}</div>
-                  </div>
-                  <p className="font-bold text-slate-300 text-[15px] leading-relaxed break-keep">{item.content}</p>
-                </div>
+                <div key={item.id} className={`bg-[#1f2230] p-7 rounded-[1.5rem] border transition-all ${idx === 0 ? 'border-sky-500 shadow-2xl shadow-sky-500/10' : 'border-white/5 hover:border-white/10'}`}><div className="flex justify-between items-start mb-5 pb-5 border-b border-white/5"><div className="space-y-1"><div className="text-sky-400 font-black text-xs flex items-center gap-1.5 uppercase"><Calendar size={14}/> {item.date}</div><div className="font-black text-white text-lg opacity-90">{selection.station}역 <span className="text-slate-600 mx-1">|</span> {item.unit}</div></div><div className="bg-white/5 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-white/5 uppercase">CODE {item.category}</div></div><p className="font-bold text-slate-300 text-[15px] leading-relaxed break-keep">{item.content}</p></div>
               ))}
             </div>
           </div>
-
-          <div className="lg:col-span-4">
-            <section className="bg-[#1f2230] border border-white/5 rounded-[2.5rem] p-8 shadow-2xl sticky top-28">
-              <h3 className="text-[11px] font-black text-sky-500 mb-8 uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-4"><BarChart2 size={16} /> 분석 리포트</h3>
-              <div className="space-y-10">
-                <div>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Inspections</p>
-                   <p className="text-5xl font-black text-white tracking-tighter">{stationStats.total}<span className="text-sm font-medium ml-1 opacity-20">건</span></p>
-                </div>
-                <div className="p-6 bg-blue-500/5 rounded-3xl border border-blue-500/20 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Priority 1.13</p>
-                    <p className="text-2xl font-black text-white">{stationStats.highPriority}<span className="text-xs ml-1 opacity-30">건</span></p>
-                  </div>
-                  <Zap size={28} className="text-blue-500/30 fill-blue-500/10" />
-                </div>
-              </div>
-            </section>
-          </div>
+          <div className="lg:col-span-4"><section className="bg-[#1f2230] border border-white/5 rounded-[2.5rem] p-8 shadow-2xl sticky top-28"><h3 className="text-[11px] font-black text-sky-500 mb-8 uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-4"><BarChart2 size={16} /> 분석 리포트</h3><div className="space-y-10"><div><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Inspections</p><p className="text-5xl font-black text-white tracking-tighter">{stationStats.total}<span className="text-sm font-medium ml-1 opacity-20">건</span></p></div><div className="p-6 bg-blue-500/5 rounded-3xl border border-blue-500/20 flex items-center justify-between"><div><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Priority 1.13</p><p className="text-2xl font-black text-white">{stationStats.highPriority}<span className="text-xs ml-1 opacity-30">건</span></p></div><Zap size={28} className="text-blue-500/30 fill-blue-500/10" /></div></div></section></div>
         </div>
       </main>
     </div>
