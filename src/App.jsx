@@ -6,10 +6,10 @@ const App = () => {
   const [allData, setAllData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // 비밀번호 보안 설정
+  // 보안 설정
   const [isPwModalOpen, setIsPwModalOpen] = useState(false);
   const [pwInput, setPwInput] = useState("");
-  const ADMIN_PASSWORD = "1234"; // 숫자로만 설정
+  const ADMIN_PASSWORD = "1234"; 
 
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
@@ -42,7 +42,6 @@ const App = () => {
     loadData();
   }, []);
 
-  // 비밀번호 검증 로직
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (pwInput === ADMIN_PASSWORD) {
@@ -98,16 +97,18 @@ const App = () => {
           </p>
           <button 
             onClick={() => setIsPwModalOpen(true)} 
-            className="px-16 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto shadow-2xl"
+            className="group px-16 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto shadow-2xl"
           >
-            조회 시작 <Lock size={20} className="text-slate-400" />
+            조회 시작 
+            {/* 자물쇠 아이콘 색상 변경 적용 */}
+            <Lock size={20} className="text-red-500 group-hover:text-red-400 transition-colors" />
           </button>
           <div className="mt-32 text-slate-700 text-[10px] font-bold uppercase tracking-[0.4em]">
             DAEGU TRANSPORTATION CORPORATION © 2026
           </div>
         </div>
 
-        {/* [보안] 비밀번호 입력 모달 */}
+        {/* 비밀번호 입력 모달 */}
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md">
             <div className="bg-[#1f2230] w-full max-w-sm rounded-[2.5rem] p-10 border border-white/10 shadow-3xl relative animate-in fade-in zoom-in duration-300">
@@ -126,7 +127,7 @@ const App = () => {
                   placeholder="••••"
                   className="w-full bg-[#141519] border-2 border-white/5 rounded-2xl py-5 text-center text-3xl font-black text-sky-500 tracking-[0.5em] focus:border-sky-500 outline-none transition-all placeholder:text-slate-800"
                 />
-                <button type="submit" className="w-full py-4 bg-sky-500 text-white rounded-2xl font-black text-sm hover:bg-sky-400 transition-colors shadow-lg shadow-sky-500/20">확인</button>
+                <button type="submit" className="w-full py-4 bg-sky-500 text-white rounded-2xl font-black text-sm hover:bg-sky-400 transition-colors">확인</button>
               </form>
             </div>
           </div>
