@@ -9,7 +9,7 @@ const App = () => {
   // 보안 설정
   const [isPwModalOpen, setIsPwModalOpen] = useState(false);
   const [pwInput, setPwInput] = useState("");
-  const ADMIN_PASSWORD = "1234"; 
+  const ADMIN_PASSWORD = "3650"; 
 
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '큰고개', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
