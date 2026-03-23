@@ -142,7 +142,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">01. Line Selection</label>
@@ -164,7 +163,7 @@ const App = () => {
                 <button onClick={() => setSelection({...selection, type: 'E/L', unit: '전체'})} className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
                 <button onClick={() => setSelection({...selection, type: 'E/S', unit: '전체'})} className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black focus:border-indigo-600 outline-none text-slate-800 text-center appearance-none cursor-pointer">{availableUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black focus:border-indigo-600 outline-none text-white text-center appearance-none cursor-pointer">{availableUnits.map(u => <option key={u} value={u} className="bg-slate-900">{u}</option>)}</select>
             </div>
           </div>
         </section>
@@ -180,7 +179,8 @@ const App = () => {
           </section>
 
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-6"><PieChart size={18} className="text-indigo-600" /><span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">{selection.station}역 검사항목 비중</span></div>
+            {/* 제목 최적화: [역사명] 검사항목 비중 */}
+            <div className="flex items-center gap-3 mb-6"><PieChart size={18} className="text-indigo-600" /><span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">[{selection.station}역] 검사항목 비중</span></div>
             <div className="flex items-start gap-6">
               <div className="w-24 h-24 flex-shrink-0">
                 <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
@@ -188,7 +188,8 @@ const App = () => {
               <div className="flex-1 space-y-1.5 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
                 {stationChartData.labels.map((label, i) => (
                   <div key={label} onMouseEnter={() => setHoveredCategory(label)} onMouseLeave={() => setHoveredCategory(null)} className={`flex items-center justify-between p-1 rounded-md transition-all ${hoveredCategory === label ? 'bg-indigo-50' : ''}`}>
-                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: chartColors[i % chartColors.length] }}></div><span className="text-[9px] font-bold text-slate-500">Code {label}</span></div>
+                    {/* [변경] Code -> 검사항목 */}
+                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: chartColors[i % chartColors.length] }}></div><span className="text-[9px] font-bold text-slate-500">검사항목 {label}</span></div>
                     <span className="text-[10px] font-black text-slate-800">{stationChartData.values[i]}건</span>
                   </div>
                 ))}
@@ -196,7 +197,7 @@ const App = () => {
             </div>
             {hoveredCategory && (
               <div className="mt-4 p-4 rounded-2xl border bg-indigo-50 border-indigo-100 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
-                <div className="flex items-center gap-2 mb-1.5"><Info size={12} className="text-indigo-500" /><span className="text-[9px] font-bold uppercase tracking-widest text-indigo-600">Code {hoveredCategory} 대표 내역</span></div>
+                <div className="flex items-center gap-2 mb-1.5"><Info size={12} className="text-indigo-500" /><span className="text-[9px] font-bold uppercase tracking-widest text-indigo-600">검사항목 {hoveredCategory} 대표 내역</span></div>
                 <p className="text-[11px] leading-relaxed break-keep text-indigo-900 font-medium">{representativeContent}</p>
               </div>
             )}
@@ -204,17 +205,18 @@ const App = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-2xl font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3><span className="text-[11px] font-black text-slate-400 ml-auto uppercase tracking-widest">{filteredResults.length} Records</span></div>
+          {/* [변경] 상세 내역 폰트 크기 축소 (text-2xl -> text-lg) 및 records 삭제 */}
+          <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4 pb-20">
             {filteredResults.map((item) => (
               <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 hover:border-indigo-100 transition-all">
                 <div className="flex justify-between items-start mb-5 pb-5 border-b border-slate-100">
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2 uppercase tracking-tight"><Calendar size={14}/> {item.date}</div>
-                    {/* 역사명 제거하고 호기만 표시 */}
                     <div className="font-black text-slate-800 text-lg opacity-90">{item.unit}</div>
                   </div>
-                  <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-slate-200 uppercase">CODE {item.category}</div>
+                  {/* [변경] CODE -> 검사항목 */}
+                  <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-slate-200 uppercase">검사항목 {item.category}</div>
                 </div>
                 <p className="font-bold text-slate-600 text-[16px] leading-[1.8] break-keep">{item.content}</p>
               </div>
