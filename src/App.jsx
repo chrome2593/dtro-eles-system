@@ -1,5 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Lock, X, LogOut, CheckCircle } from 'lucide-react';
+import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRight, Lock, X, LogOut, CheckCircle, PieChart } from 'lucide-react';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+
+// Chart.js 필수 부품 등록
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const App = () => {
   const [page, setPage] = useState(() => {
@@ -73,6 +78,36 @@ const App = () => {
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [selection, allData]);
 
+  // [추가] 선택된 역사의 검사항목 통계 및 차트 데이터 계산
+  const stationChartData = useMemo(() => {
+    const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
+    const counts = {};
+    stationData.forEach(d => {
+      counts[d.category] = (counts[d.category] || 0) + 1;
+    });
+
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: [
+            'rgba(79, 70, 229, 0.8)', // Indigo
+            'rgba(99, 102, 241, 0.6)', 
+            'rgba(129, 140, 248, 0.4)',
+            'rgba(165, 180, 252, 0.3)',
+            'rgba(199, 210, 254, 0.2)',
+          ],
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+      ],
+    };
+  }, [selection.station, allData]);
+
   const stationStats = useMemo(() => {
     const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
     return {
@@ -88,9 +123,8 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  if (isLoading) return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // [랜딩 페이지] 다크 테마 유지
   if (page === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 text-center relative overflow-hidden">
@@ -103,7 +137,7 @@ const App = () => {
             DTRO <br />
             <span className="text-indigo-500">승강기 관리</span>
           </h1>
-          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed text-balance">
+          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">
             실제 검사 데이터 기반 운영 중
           </p>
           <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">
@@ -130,7 +164,6 @@ const App = () => {
     );
   }
 
-  // [대시보드 페이지] 화원 배경 + 인디고 블루 포인트
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-indigo-100">
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
@@ -144,79 +177,74 @@ const App = () => {
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 화이트 글래시 필터 섹션 */}
+        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">01. Line Selection</label>
             <div className="relative flex p-1 bg-slate-100 rounded-2xl overflow-hidden h-12">
-              <div 
-                className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50"
-                style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }}
-              />
-              <button 
-                onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '전체'})}
-                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-400'}`}
-              >1호선</button>
-              <button 
-                onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '전체'})}
-                className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-400'}`}
-              >2호선</button>
+              <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+              <button onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '전체'})} className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-400'}`}>1호선</button>
+              <button onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '전체'})} className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-400'}`}>2호선</button>
             </div>
           </div>
-
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">02. Station Name</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black focus:border-indigo-600 outline-none text-slate-800 text-center cursor-pointer appearance-none">
-              {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
-            </select>
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '전체'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black focus:border-indigo-600 outline-none text-slate-800 text-center cursor-pointer appearance-none">{lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}</select>
           </div>
-
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">03. Equipment & Unit</label>
             <div className="flex gap-2">
               <div className="relative flex p-1 bg-slate-100 rounded-2xl overflow-hidden h-12 flex-1">
-                <div 
-                  className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50"
-                  style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }}
-                />
-                <button 
-                  onClick={() => setSelection({...selection, type: 'E/L', unit: '전체'})}
-                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}
-                >E/L</button>
-                <button 
-                  onClick={() => setSelection({...selection, type: 'E/S', unit: '전체'})}
-                  className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}
-                >E/S</button>
+                <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+                <button onClick={() => setSelection({...selection, type: 'E/L', unit: '전체'})} className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
+                <button onClick={() => setSelection({...selection, type: 'E/S', unit: '전체'})} className={`relative z-10 flex-1 text-[10px] font-black transition-colors duration-300 ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black focus:border-indigo-600 outline-none text-slate-800 text-center appearance-none cursor-pointer">
-                {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black focus:border-indigo-600 outline-none text-slate-800 text-center appearance-none cursor-pointer">{availableUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
             </div>
           </div>
         </section>
 
-        {/* 선택 역사 점검 요약 */}
-        <section className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle size={18} className="text-indigo-600" />
-            <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em] whitespace-nowrap">역사 요약</span>
-          </div>
-          <div className="flex gap-6 items-center">
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Elevator</span>
-              <p className={`text-xl font-black transition-colors ${stationStats.elCount === 0 ? 'text-slate-300' : 'text-slate-800'}`}>
-                {stationStats.elCount}<span className="text-[10px] ml-1 opacity-40">건</span>
-              </p>
+        {/* [추가] 역사 요약 & 도넛 차트 레이아웃 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-3 mb-8">
+              <CheckCircle size={18} className="text-indigo-600" />
+              <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">역사 점검 요약</span>
             </div>
-            <div className="w-[1px] h-6 bg-slate-200"></div>
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Escalator</span>
-              <p className={`text-xl font-black transition-colors ${stationStats.esCount === 0 ? 'text-slate-300' : 'text-slate-800'}`}>
-                {stationStats.esCount}<span className="text-[10px] ml-1 opacity-40">건</span>
-              </p>
+            <div className="flex justify-around items-center">
+              <div className="text-center">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Elevator</span>
+                <p className={`text-4xl font-black ${stationStats.elCount === 0 ? 'text-slate-200' : 'text-slate-800'}`}>{stationStats.elCount}</p>
+              </div>
+              <div className="w-[1px] h-12 bg-slate-100"></div>
+              <div className="text-center">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Escalator</span>
+                <p className={`text-4xl font-black ${stationStats.esCount === 0 ? 'text-slate-200' : 'text-slate-800'}`}>{stationStats.esCount}</p>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <PieChart size={18} className="text-indigo-600" />
+              <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">검사항목 비중</span>
+            </div>
+            <div className="h-32 flex items-center justify-center">
+              {stationStats.elCount + stationStats.esCount > 0 ? (
+                <Doughnut 
+                  data={stationChartData} 
+                  options={{ 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
+                  }} 
+                />
+              ) : (
+                <p className="text-[10px] text-slate-300 font-bold">데이터 없음</p>
+              )}
+            </div>
+          </section>
+        </div>
 
         {/* 상세 내역 리스트 */}
         <div className="space-y-6">
@@ -237,9 +265,7 @@ const App = () => {
                 </div>
                 <p className="font-bold text-slate-600 text-[16px] leading-[1.8] break-keep">{item.content}</p>
               </div>
-            )) : (
-              <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-bold">데이터가 없습니다.</div>
-            )}
+            )) : <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-bold">데이터가 없습니다.</div>}
           </div>
         </div>
       </main>
