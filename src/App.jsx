@@ -3,7 +3,6 @@ import { Monitor, Calendar, MapPin, BarChart2, Layers, History, Zap, ChevronRigh
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
-// Chart.js 필수 부품 등록
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const App = () => {
@@ -78,7 +77,11 @@ const App = () => {
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [selection, allData]);
 
-  // [추가] 선택된 역사의 검사항목 통계 및 차트 데이터 계산
+  // 차트 색상 팔레트 고정
+  const chartColors = [
+    '#4F46E5', '#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF'
+  ];
+
   const stationChartData = useMemo(() => {
     const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
     const counts = {};
@@ -86,21 +89,17 @@ const App = () => {
       counts[d.category] = (counts[d.category] || 0) + 1;
     });
 
-    const labels = Object.keys(counts);
-    const data = Object.values(counts);
+    const sortedEntries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const labels = sortedEntries.map(e => e[0]);
+    const data = sortedEntries.map(e => e[1]);
 
     return {
       labels,
+      data,
       datasets: [
         {
           data,
-          backgroundColor: [
-            'rgba(79, 70, 229, 0.8)', // Indigo
-            'rgba(99, 102, 241, 0.6)', 
-            'rgba(129, 140, 248, 0.4)',
-            'rgba(165, 180, 252, 0.3)',
-            'rgba(199, 210, 254, 0.2)',
-          ],
+          backgroundColor: chartColors,
           borderColor: '#fff',
           borderWidth: 2,
         },
@@ -123,7 +122,7 @@ const App = () => {
     return ['전체', ...new Set(units)].sort();
   }, [selection.station, selection.type, allData]);
 
-  if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
     return (
@@ -204,7 +203,7 @@ const App = () => {
           </div>
         </section>
 
-        {/* [추가] 역사 요약 & 도넛 차트 레이아웃 */}
+        {/* 요약 및 차트 통합 레이아웃 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8">
@@ -224,24 +223,41 @@ const App = () => {
             </div>
           </section>
 
+          {/* [수정] 상시 노출 범례가 포함된 차트 카드 */}
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-6">
               <PieChart size={18} className="text-indigo-600" />
               <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">검사항목 비중</span>
             </div>
-            <div className="h-32 flex items-center justify-center">
-              {stationStats.elCount + stationStats.esCount > 0 ? (
-                <Doughnut 
-                  data={stationChartData} 
-                  options={{ 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    cutout: '70%'
-                  }} 
-                />
-              ) : (
-                <p className="text-[10px] text-slate-300 font-bold">데이터 없음</p>
-              )}
+            <div className="flex items-center gap-6">
+              <div className="w-28 h-28 flex-shrink-0">
+                {stationStats.elCount + stationStats.esCount > 0 ? (
+                  <Doughnut 
+                    data={stationChartData} 
+                    options={{ 
+                      maintainAspectRatio: false, 
+                      plugins: { legend: { display: false } },
+                      cutout: '70%'
+                    }} 
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full border-4 border-slate-50 flex items-center justify-center text-[10px] text-slate-200 font-bold">EMPTY</div>
+                )}
+              </div>
+              {/* 상시 노출 범례 리스트 */}
+              <div className="flex-1 space-y-2 max-h-28 overflow-y-auto pr-2 custom-scrollbar">
+                {stationChartData.labels.length > 0 ? stationChartData.labels.map((label, i) => (
+                  <div key={label} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: chartColors[i % chartColors.length] }}></div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Code {label}</span>
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800">{stationChartData.data[i]}건</span>
+                  </div>
+                )) : (
+                  <p className="text-[10px] text-slate-300 font-bold">기록 없음</p>
+                )}
+              </div>
             </div>
           </section>
         </div>
@@ -265,10 +281,17 @@ const App = () => {
                 </div>
                 <p className="font-bold text-slate-600 text-[16px] leading-[1.8] break-keep">{item.content}</p>
               </div>
-            )) : <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-bold">데이터가 없습니다.</div>}
+            )) : <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-white/10 text-slate-300 font-bold">데이터가 없습니다.</div>}
           </div>
         </div>
       </main>
+      
+      {/* 범례 리스트 스크롤바 스타일 */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+      `}</style>
     </div>
   );
 };
