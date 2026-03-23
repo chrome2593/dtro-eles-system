@@ -1,7 +1,7 @@
 {
   "name": "dtro-app",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.2.2"
+    "vite": "^5.4.2"
   }
 }
