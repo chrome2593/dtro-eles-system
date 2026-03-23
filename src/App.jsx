@@ -111,7 +111,7 @@ const App = () => {
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block"><span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Management System</span></div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
-          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
+          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반</p>
           <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
           <div className="mt-32 text-slate-800 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
