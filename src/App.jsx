@@ -14,7 +14,7 @@ const App = () => {
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
   // [설정] 구글 시트 웹 앱 URL (여기에 복사한 주소를 입력하세요)
-  const GOOGLE_SHEET_URL = ""; 
+  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
