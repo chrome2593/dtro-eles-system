@@ -13,7 +13,8 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  const ADMIN_PASSWORD = "3650"; 
+  const ADMIN_PASSWORD = "3650";
+  const SESSION_TIMEOUT = 5 * 60 * 1000; // 5분 (밀리초 단위)
 
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '동구청', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
@@ -21,6 +22,13 @@ const App = () => {
   };
 
   const [selection, setSelection] = useState({ line: '1호선', station: '설화명곡', type: 'E/L', unit: '호기 선택' });
+
+  // 로그아웃 함수
+  const handleLogout = () => {
+    localStorage.removeItem('dtro_auth');
+    localStorage.removeItem('dtro_login_time');
+    setPage('landing');
+  };
 
   const normalizeStation = (name) => {
     if (!name) return '';
@@ -33,8 +41,21 @@ const App = () => {
   };
 
   useEffect(() => {
+    // 세션 체크 및 데이터 로드
     const auth = localStorage.getItem('dtro_auth');
-    if (auth === 'true') setPage('dashboard');
+    const loginTime = localStorage.getItem('dtro_login_time');
+
+    if (auth === 'true' && loginTime) {
+      const elapsed = Date.now() - parseInt(loginTime);
+      if (elapsed > SESSION_TIMEOUT) {
+        handleLogout(); // 5분 경과 시 자동 로그아웃
+      } else {
+        setPage('dashboard');
+        // 남은 시간만큼 타이머 설정
+        const timer = setTimeout(() => handleLogout(), SESSION_TIMEOUT - elapsed);
+        return () => clearTimeout(timer);
+      }
+    }
 
     const loadData = async () => {
       try {
@@ -44,23 +65,18 @@ const App = () => {
       } catch (e) { console.error(e); } finally { setTimeout(() => setIsLoading(false), 500); }
     };
     loadData();
-  }, []);
+  }, [page]); // 페이지 상태 변경 시 세션 타이머 재확인
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (pwInput === ADMIN_PASSWORD) {
+      const now = Date.now();
       localStorage.setItem('dtro_auth', 'true');
+      localStorage.setItem('dtro_login_time', now.toString());
       setIsPwModalOpen(false);
       setPage('dashboard');
       setPwInput("");
     } else { alert("비밀번호가 일치하지 않습니다."); setPwInput(""); }
-  };
-
-  const handleLogout = () => {
-    if (window.confirm("로그아웃 하시겠습니까?")) {
-      localStorage.removeItem('dtro_auth');
-      setPage('landing');
-    }
   };
 
   const filteredResults = useMemo(() => {
@@ -111,7 +127,7 @@ const App = () => {
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block"><span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Management System</span></div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
-          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반</p>
+          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
           <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
           <div className="mt-32 text-slate-800 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
@@ -136,29 +152,32 @@ const App = () => {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-indigo-100">
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight text-slate-900">DTRO E/L E/S</span></div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border border-slate-200 px-5 py-2.5 rounded-xl transition-all"><LogOut size={16}/> Logout</button>
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight text-slate-900">DTRO Archive</span></div>
+          <button onClick={() => { if (window.confirm("로그아웃 하시겠습니까?")) handleLogout(); }} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest border border-slate-200 px-5 py-2.5 rounded-xl transition-all"><LogOut size={16}/> Logout</button>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* 01. LINE - 글자 크기 확대 (text-sm) */}
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
-            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">01. Line Selection</label>
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-[0.2em] block">01. LINE</label>
             <div className="relative flex p-1 bg-slate-100 rounded-2xl overflow-hidden h-12">
               <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
               <button onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-400'}`}>1호선</button>
               <button onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black transition-colors duration-300 ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-400'}`}>2호선</button>
             </div>
           </div>
+          {/* 02. STATION - 글자 크기 확대 (text-sm) */}
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
-            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">02. Station Name</label>
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-[0.2em] block">02. STATION</label>
             <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black focus:border-indigo-600 outline-none text-slate-900 text-center cursor-pointer appearance-none">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
+          {/* 03. UNIT - 글자 크기 확대 (text-sm) */}
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
-            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block">03. Equipment & Unit</label>
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-[0.2em] block">03. UNIT</label>
             <div className="flex gap-2">
               <div className="relative flex p-1 bg-slate-100 rounded-2xl overflow-hidden h-12 flex-1">
                 <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 ease-out shadow-sm border border-slate-200/50" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
@@ -174,9 +193,12 @@ const App = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-3 mb-8"><CheckCircle size={18} className="text-indigo-600" /><span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">역사 점검 요약</span></div>
+            <div className="flex items-center gap-3 mb-8">
+              <CheckCircle size={20} className="text-indigo-600" />
+              {/* 역사 점검 요약 - 글자 크기 확대 (text-base) */}
+              <span className="text-base font-black text-indigo-600 uppercase tracking-[0.2em]">역사 점검 요약</span>
+            </div>
             <div className="flex justify-around items-center">
-              {/* [수정] 수치 크기를 text-4xl -> text-3xl로, '건' 단위를 text-base로 축소 */}
               <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Elevator</span><p className={`text-3xl font-black ${stationStats.elCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.elCount}<span className="text-base ml-1 font-bold">건</span></p></div>
               <div className="w-[1px] h-12 bg-slate-100"></div>
               <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Escalator</span><p className={`text-3xl font-black ${stationStats.esCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.esCount}<span className="text-base ml-1 font-bold">건</span></p></div>
@@ -184,7 +206,11 @@ const App = () => {
           </section>
 
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-6"><PieChart size={18} className="text-indigo-600" /><span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em]">[{selection.station}역] 검사항목 비중</span></div>
+            {/* 검사항목 비중 - 글자 크기 확대 (text-base) */}
+            <div className="flex items-center gap-3 mb-6">
+              <PieChart size={20} className="text-indigo-600" />
+              <span className="text-base font-black text-indigo-600 uppercase tracking-[0.2em]">[{selection.station}역] 검사항목 비중</span>
+            </div>
             <div className="flex items-start gap-6">
               <div className="w-24 h-24 flex-shrink-0">
                 <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
