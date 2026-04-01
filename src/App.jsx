@@ -96,7 +96,7 @@ const App = () => {
       const payload = { ...newLog, station: selection.station };
       await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
       setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
-      alert("조치 기록이 전송되었습니다.");
+      alert("조치 기록 등록 완료");
       setTimeout(() => fetchLogs(), 1500);
     } catch (e) { alert("연결 상태를 확인해주세요."); } finally { setIsSaving(false); }
   };
