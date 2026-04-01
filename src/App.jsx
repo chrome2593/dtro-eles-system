@@ -13,12 +13,12 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  // [설정] 구글 시트 웹 앱 URL을 여기에 입력하세요
+  // [설정] 본인의 구글 시트 웹 앱 URL을 입력하세요
   const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // 한국 시간 기준 YYYY-MM-DD 생성 (입력용)
+  // 한국 시간 기준 YYYY-MM-DD 생성 (날짜 밀림 방지)
   const getTodayString = () => {
     const now = new Date();
     const y = now.getFullYear();
@@ -66,7 +66,7 @@ const App = () => {
       const response = await fetch(GOOGLE_SHEET_URL);
       const data = await response.json();
       if (Array.isArray(data)) setMaintenanceLogs(data.reverse());
-    } catch (e) { console.error("Logs update skip"); }
+    } catch (e) { console.error("실시간 로그 업데이트 대기 중..."); }
   };
 
   useEffect(() => {
@@ -81,24 +81,24 @@ const App = () => {
         const response = await fetch('/data.json');
         const data = await response.json();
         setAllData(Array.isArray(data) ? data : []);
-      } catch (e) { console.error(e); } finally { setTimeout(() => setIsLoading(false), 500); }
+      } catch (e) { console.error("기초 데이터 로드 실패"); } finally { setTimeout(() => setIsLoading(false), 500); }
     };
     loadData();
   }, [page]);
 
   const handleSaveLog = async (e) => {
     e.preventDefault();
-    if (!GOOGLE_SHEET_URL) return alert("API URL을 확인해주세요.");
-    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("내용을 모두 입력해주세요.");
+    if (!GOOGLE_SHEET_URL) return alert("API URL 설정이 필요합니다.");
+    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("모든 항목을 작성해주세요.");
     
     setIsSaving(true);
     try {
-      const payload = { ...newLog, station: selection.station, date: newLog.date };
+      const payload = { ...newLog, station: selection.station };
       await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
       setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
-      alert("조치 기록이 저장되었습니다.");
-      setTimeout(() => fetchLogs(), 1200);
-    } catch (e) { alert("연결 오류"); } finally { setIsSaving(false); }
+      alert("조치 기록이 전송되었습니다.");
+      setTimeout(() => fetchLogs(), 1500);
+    } catch (e) { alert("연결 상태를 확인해주세요."); } finally { setIsSaving(false); }
   };
 
   const filteredResults = useMemo(() => {
@@ -130,6 +130,16 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
+  const stationStats = useMemo(() => {
+    const stationData = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
+    return { elCount: stationData.filter(d => d.type === 'E/L').length, esCount: stationData.filter(d => d.type === 'E/S').length };
+  }, [selection.station, allData]);
+
+  const availableUnits = useMemo(() => {
+    const units = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type).map(item => item.unit);
+    return ['호기 선택', ...new Set(units)].sort();
+  }, [selection.station, selection.type, allData]);
+
   if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
@@ -142,8 +152,8 @@ const App = () => {
           </div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
           <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
-          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 transition-all flex items-center gap-4 mx-auto shadow-2xl">
-            조회 시작 <Lock size={20} className="text-red-500" />
+          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">
+            조회 시작 <Lock size={22} className="text-red-500" />
           </button>
           <div className="mt-32 text-slate-800 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
@@ -161,8 +171,9 @@ const App = () => {
                   setPage('dashboard');
                 } else alert("비밀번호 불일치");
               }} className="space-y-6">
-                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] outline-none placeholder:text-slate-900"/>
-                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm">확인</button>
+                {/* 비밀번호 입력 텍스트를 흰색(text-white)으로 변경 */}
+                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-white tracking-[0.6em] outline-none placeholder:text-slate-900"/>
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg">확인</button>
               </form>
             </div>
           </div>
@@ -175,13 +186,12 @@ const App = () => {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-indigo-100">
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight text-slate-900">DTRO Archive</span></div>
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight text-slate-900">DTRO Archive</span></div>
           <button onClick={() => { if (window.confirm("로그아웃 하시겠습니까?")) handleLogout(); }} className="text-[11px] font-black text-slate-400 hover:text-red-500 border border-slate-200 px-5 py-2.5 rounded-xl transition-all">Logout</button>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
             <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">01. LINE</label>
@@ -212,7 +222,6 @@ const App = () => {
           </div>
         </section>
 
-        {/* 요약 & 차트 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-[0.2em]">역사 점검 요약</span></div>
@@ -229,7 +238,7 @@ const App = () => {
                 <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
               </div>
               <div className="flex-1 space-y-1.5 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
-                {stationChartData.labels.map((label, i) => (
+                {(stationChartData.labels || []).map((label, i) => (
                   <div key={label} onMouseEnter={() => setHoveredCategory(label)} onMouseLeave={() => setHoveredCategory(null)} className={`flex items-center justify-between p-1 rounded-md transition-all ${hoveredCategory === label ? 'bg-indigo-50' : ''}`}>
                     <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: ['#4F46E5', '#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF'][i % 6] }}></div><span className="text-[9px] font-bold text-slate-500">검사항목 {label}</span></div>
                     <span className="text-[10px] font-black text-slate-800">{stationChartData.values[i]}건</span>
@@ -246,11 +255,10 @@ const App = () => {
           </section>
         </div>
 
-        {/* 상세 내역 (기존 데이터) */}
         <div className="space-y-6">
           <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4">
-            {filteredResults.map((item) => (
+            {(filteredResults || []).map((item) => (
               <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm transition-all hover:border-indigo-100">
                 <div className="flex justify-between items-start mb-5 pb-5 border-b border-slate-100">
                   <div className="space-y-1"><div className="text-indigo-600 font-black text-xs flex items-center gap-2"><Calendar size={14}/> {item.date}</div><div className="font-black text-slate-800 text-lg">{item.unit}</div></div>
@@ -265,7 +273,6 @@ const App = () => {
         {/* 현장 조치 기록 섹션 */}
         <div className="space-y-6 mt-12 pb-20">
           <div className="flex items-center gap-4 px-3"><Wrench size={24} className="text-indigo-600" /><h3 className="text-lg font-black text-indigo-600 tracking-tight">현장 조치 기록</h3></div>
-          
           <form onSubmit={handleSaveLog} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -281,22 +288,18 @@ const App = () => {
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">점검자</label>
                 <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/></div>
               </div>
-              
-              {/* 조치 날짜 입력: 레이아웃 고정 */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
-                <div className="w-full">
+                <div className="w-full max-w-full overflow-hidden">
                   <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 appearance-none"/>
                 </div>
               </div>
             </div>
-
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase px-1">보완 및 조치사항</label>
               <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm focus:border-indigo-500 h-32 resize-none outline-none"/>
             </div>
-
-            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg active:scale-95">
+            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100">
               {isSaving ? "저장 중..." : <><PenLine size={18} className="inline mr-2"/> 조치 기록 저장</>}
             </button>
           </form>
@@ -308,7 +311,6 @@ const App = () => {
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2">
                       <Calendar size={14}/> 
-                      {/* [날짜 교정] 날짜를 글자로만 인식하여 출력 (표준시 무시) */}
                       {String(log.date || '').split('T')[0].replace(/-/g, '. ')}
                     </div>
                     <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
