@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, History, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Wrench } from 'lucide-react';
+import { Monitor, Calendar, History, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Wrench, Eye, EyeOff } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
@@ -11,20 +11,18 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPwModalOpen, setIsPwModalOpen] = useState(false);
   const [pwInput, setPwInput] = useState("");
+  const [showPw, setShowPw] = useState(false); // 비밀번호 보기 상태
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  // [설정] 구글 시트 웹 앱 URL을 입력하세요
+  // [설정] 구글 시트 웹 앱 URL을 여기에 입력하세요
   const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // 한국 시간 기준 YYYY-MM-DD 생성 (날짜 밀림 방지)
+  // 오늘 날짜 문자열 (YYYY-MM-DD)
   const getTodayKST = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const [newLog, setNewLog] = useState({ 
@@ -60,13 +58,15 @@ const App = () => {
     return n;
   };
 
+  // 조치 기록 가져오기 (방어적 코드 강화)
   const fetchLogs = async () => {
     if (!GOOGLE_SHEET_URL) return;
     try {
       const response = await fetch(GOOGLE_SHEET_URL);
+      if (!response.ok) return;
       const data = await response.json();
-      if (Array.isArray(data)) setMaintenanceLogs(data.reverse());
-    } catch (e) { console.error("기록 업데이트 스킵"); }
+      if (data && Array.isArray(data)) setMaintenanceLogs(data.reverse());
+    } catch (e) { console.warn("로그 데이터를 불러올 수 없습니다."); }
   };
 
   useEffect(() => {
@@ -81,7 +81,7 @@ const App = () => {
         const response = await fetch('/data.json');
         const data = await response.json();
         setAllData(Array.isArray(data) ? data : []);
-      } catch (e) { console.error("데이터 로드 에러"); } finally { setTimeout(() => setIsLoading(false), 500); }
+      } catch (e) { console.error("데이터 로드 실패"); } finally { setTimeout(() => setIsLoading(false), 500); }
     };
     loadData();
   }, [page]);
@@ -89,17 +89,16 @@ const App = () => {
   const handleSaveLog = async (e) => {
     e.preventDefault();
     if (!GOOGLE_SHEET_URL) return alert("API URL을 확인해주세요.");
-    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("빈 칸을 모두 입력해주세요.");
+    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("모든 항목을 입력해주세요.");
     
     setIsSaving(true);
     try {
-      // 날짜를 연산 없이 문자열 그대로 전송
-      const payload = { ...newLog, station: selection.station, date: String(newLog.date).split('T')[0] };
+      const payload = { ...newLog, station: selection.station, date: newLog.date };
       await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
       setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
       alert("조치 기록 등록 완료");
       setTimeout(() => fetchLogs(), 1500);
-    } catch (e) { alert("연결 오류"); } finally { setIsSaving(false); }
+    } catch (e) { alert("연결 오류가 발생했습니다."); } finally { setIsSaving(false); }
   };
 
   const filteredResults = useMemo(() => {
@@ -131,6 +130,16 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
+  const stationStats = useMemo(() => {
+    const stationData = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
+    return { elCount: stationData.filter(d => d.type === 'E/L').length, esCount: stationData.filter(d => d.type === 'E/S').length };
+  }, [selection.station, allData]);
+
+  const availableUnits = useMemo(() => {
+    const units = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type).map(item => item.unit);
+    return ['호기 선택', ...new Set(units)].sort();
+  }, [selection.station, selection.type, allData]);
+
   if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
@@ -143,16 +152,16 @@ const App = () => {
           </div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
           <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
-          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 transition-all flex items-center gap-4 mx-auto shadow-2xl">
+          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">
             조회 시작 <Lock size={20} className="text-red-500" />
           </button>
           <div className="mt-32 text-slate-800 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
-            <div className="bg-slate-800/80 backdrop-blur-2xl w-full max-w-[320px] rounded-[2.5rem] p-8 border border-white/10 shadow-3xl relative">
+            <div className="bg-slate-800/80 backdrop-blur-2xl w-full max-w-[320px] rounded-[2.5rem] p-8 border border-white/10 shadow-3xl relative animate-in zoom-in duration-300">
               <button onClick={() => setIsPwModalOpen(false)} className="absolute top-6 right-6 text-slate-600 hover:text-white"><X size={20}/></button>
-              <h3 className="text-white font-black text-lg mb-6 text-center">비밀번호 입력</h3>
+              <h3 className="text-white font-black text-lg mb-8 text-center">비밀번호 입력</h3>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (pwInput === ADMIN_PASSWORD) {
@@ -161,10 +170,14 @@ const App = () => {
                   setIsPwModalOpen(false);
                   setPage('dashboard');
                 } else alert("비밀번호 불일치");
-              }} className="space-y-6">
-                {/* 입력값을 흰색(text-white)으로 변경 */}
-                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-white tracking-[0.6em] outline-none placeholder:text-slate-900"/>
-                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm">확인</button>
+              }} className="space-y-8">
+                <div className="relative">
+                  <input autoFocus type={showPw ? "text" : "password"} inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-5 text-center text-3xl font-black text-white tracking-[0.4em] outline-none placeholder:text-slate-800"/>
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-2">
+                    {showPw ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">확인</button>
               </form>
             </div>
           </div>
@@ -183,7 +196,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
             <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">01. LINE</label>
@@ -195,7 +207,7 @@ const App = () => {
           </div>
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
             <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">02. STATION</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none cursor-pointer outline-none">
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none outline-none">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
@@ -207,14 +219,13 @@ const App = () => {
                 <button onClick={() => setSelection({...selection, type: 'E/L', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
                 <button onClick={() => setSelection({...selection, type: 'E/S', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center appearance-none cursor-pointer outline-none">
+              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center appearance-none outline-none">
                 {availableUnits.map(u => <option key={u} value={u} className="bg-white text-slate-900">{u}</option>)}
               </select>
             </div>
           </div>
         </section>
 
-        {/* 요약 및 차트 (기존 동일) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-widest">역사 점검 요약</span></div>
@@ -232,7 +243,7 @@ const App = () => {
               </div>
               <div className="flex-1 space-y-1.5 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
                 {(stationChartData.labels || []).map((label, i) => (
-                  <div key={label} onMouseEnter={() => setHoveredCategory(label)} onMouseLeave={() => setHoveredCategory(null)} className={`flex items-center justify-between p-1 rounded-md transition-all ${hoveredCategory === label ? 'bg-indigo-50' : ''}`}>
+                  <div key={label} onMouseEnter={() => setHoveredCategory(label)} className={`flex items-center justify-between p-1 rounded-md transition-all ${hoveredCategory === label ? 'bg-indigo-50' : ''}`}>
                     <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: ['#4F46E5', '#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF'][i % 6] }}></div><span className="text-[9px] font-bold text-slate-500">검사항목 {label}</span></div>
                     <span className="text-[10px] font-black text-slate-800">{stationChartData.values[i]}건</span>
                   </div>
@@ -248,7 +259,7 @@ const App = () => {
           </section>
         </div>
 
-        {/* 상세 내역 (기존 데이터) */}
+        {/* 상세 내역 (기본 데이터) */}
         <div className="space-y-6">
           <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4">
@@ -283,8 +294,6 @@ const App = () => {
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">점검자</label>
                 <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/></div>
               </div>
-              
-              {/* [교정] 날짜 선택: w-full 및 max-w-full 적용하여 카드 안으로 수납 */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
                 <div className="w-full max-w-full overflow-hidden">
@@ -310,7 +319,7 @@ const App = () => {
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2">
                       <Calendar size={14}/> 
-                      {/* [날짜 교정] 어떠한 시간 연산도 없이 텍스트 그대로만 출력하여 하루 밀림 원천 차단 */}
+                      {/* [날짜 교정] 순수 문자열 필터링으로 하루 밀림 방지 */}
                       {String(log.date || '').split('T')[0].replace(/-/g, '. ')}
                     </div>
                     <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
