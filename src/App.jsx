@@ -13,12 +13,12 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  // [설정] 구글 시트 웹 앱 URL을 입력하세요
+  // [설정] 구글 시트 웹 앱 URL을 여기에 입력하세요
   const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // 날짜 버그 완전 해결: 시간 개념 없는 순수 날짜 문자열 생성
+  // 한국 시간 기준 YYYY-MM-DD 생성 (입력용)
   const getTodayString = () => {
     const now = new Date();
     const y = now.getFullYear();
@@ -64,10 +64,9 @@ const App = () => {
     if (!GOOGLE_SHEET_URL) return;
     try {
       const response = await fetch(GOOGLE_SHEET_URL);
-      if (!response.ok) return;
       const data = await response.json();
       if (Array.isArray(data)) setMaintenanceLogs(data.reverse());
-    } catch (e) { console.error("Logs Fetch Error"); }
+    } catch (e) { console.error("Logs update skip"); }
   };
 
   useEffect(() => {
@@ -82,7 +81,7 @@ const App = () => {
         const response = await fetch('/data.json');
         const data = await response.json();
         setAllData(Array.isArray(data) ? data : []);
-      } catch (e) { console.error("Data Load Error"); } finally { setTimeout(() => setIsLoading(false), 500); }
+      } catch (e) { console.error(e); } finally { setTimeout(() => setIsLoading(false), 500); }
     };
     loadData();
   }, [page]);
@@ -90,22 +89,14 @@ const App = () => {
   const handleSaveLog = async (e) => {
     e.preventDefault();
     if (!GOOGLE_SHEET_URL) return alert("API URL을 확인해주세요.");
-    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("빈 칸을 모두 입력해주세요.");
+    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("내용을 모두 입력해주세요.");
     
     setIsSaving(true);
     try {
-      // 날짜에서 시간 정보를 완전히 제거하고 '글자'만 전송
-      const cleanDate = newLog.date.split('T')[0];
-      const payload = { ...newLog, station: selection.station, date: cleanDate };
-
-      await fetch(GOOGLE_SHEET_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(payload)
-      });
-      
+      const payload = { ...newLog, station: selection.station, date: newLog.date };
+      await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
       setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
-      alert("기록이 저장되었습니다.");
+      alert("조치 기록이 저장되었습니다.");
       setTimeout(() => fetchLogs(), 1200);
     } catch (e) { alert("연결 오류"); } finally { setIsSaving(false); }
   };
@@ -123,8 +114,7 @@ const App = () => {
     return (maintenanceLogs || []).filter(log => {
       const matchStation = log.station === selection.station;
       const logUnitLabel = `${log.type} #${log.unitNum}`;
-      const matchUnit = selection.unit === '호기 선택' || logUnitLabel === selection.unit;
-      return matchStation && matchUnit;
+      return matchStation && (selection.unit === '호기 선택' || logUnitLabel === selection.unit);
     });
   }, [selection, maintenanceLogs]);
 
@@ -140,16 +130,6 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
-  const stationStats = useMemo(() => {
-    const stationData = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
-    return { elCount: stationData.filter(d => d.type === 'E/L').length, esCount: stationData.filter(d => d.type === 'E/S').length };
-  }, [selection.station, allData]);
-
-  const availableUnits = useMemo(() => {
-    const units = (allData || []).filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type).map(item => item.unit);
-    return ['호기 선택', ...new Set(units)].sort();
-  }, [selection.station, selection.type, allData]);
-
   if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
@@ -157,9 +137,15 @@ const App = () => {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8 text-center relative overflow-hidden">
         <div className="absolute top-[-15%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px]"></div>
         <div className="max-w-2xl w-full relative z-10">
-          <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block"><span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Shared System</span></div>
+          <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block">
+            <span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Management System</span>
+          </div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
-          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl shadow-2xl transition-all active:scale-95">조회 시작 <Lock size={22} className="text-red-500 ml-2" /></button>
+          <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
+          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 transition-all flex items-center gap-4 mx-auto shadow-2xl">
+            조회 시작 <Lock size={20} className="text-red-500" />
+          </button>
+          <div className="mt-32 text-slate-800 text-[10px] font-bold uppercase tracking-[0.4em]">DAEGU TRANSPORTATION CORPORATION © 2026</div>
         </div>
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
@@ -175,7 +161,7 @@ const App = () => {
                   setPage('dashboard');
                 } else alert("비밀번호 불일치");
               }} className="space-y-6">
-                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] outline-none"/>
+                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] outline-none placeholder:text-slate-900"/>
                 <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm">확인</button>
               </form>
             </div>
@@ -229,7 +215,7 @@ const App = () => {
         {/* 요약 & 차트 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-widest">역사 점검 요약</span></div>
+            <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-[0.2em]">역사 점검 요약</span></div>
             <div className="flex justify-around items-center">
               <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Elevator</span><p className={`text-3xl font-black ${stationStats.elCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.elCount}<span className="text-base ml-1 font-bold">건</span></p></div>
               <div className="w-[1px] h-12 bg-slate-100"></div>
@@ -237,7 +223,7 @@ const App = () => {
             </div>
           </section>
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-6"><PieChart size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-widest">[{selection.station}역] 검사항목 비중</span></div>
+            <div className="flex items-center gap-3 mb-6"><PieChart size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-[0.2em]">[{selection.station}역] 검사항목 비중</span></div>
             <div className="flex items-start gap-6">
               <div className="w-24 h-24 flex-shrink-0">
                 <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
@@ -260,7 +246,7 @@ const App = () => {
           </section>
         </div>
 
-        {/* 상세 내역 (기본 데이터) */}
+        {/* 상세 내역 (기존 데이터) */}
         <div className="space-y-6">
           <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4">
@@ -296,10 +282,10 @@ const App = () => {
                 <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/></div>
               </div>
               
-              {/* [교정] 날짜 선택: 카드 안으로 수납하고 글자 밀림 방지 */}
+              {/* 조치 날짜 입력: 레이아웃 고정 */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
-                <div className="w-full px-1">
+                <div className="w-full">
                   <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 appearance-none"/>
                 </div>
               </div>
@@ -310,7 +296,7 @@ const App = () => {
               <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm focus:border-indigo-500 h-32 resize-none outline-none"/>
             </div>
 
-            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">
+            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg active:scale-95">
               {isSaving ? "저장 중..." : <><PenLine size={18} className="inline mr-2"/> 조치 기록 저장</>}
             </button>
           </form>
@@ -322,7 +308,7 @@ const App = () => {
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2">
                       <Calendar size={14}/> 
-                      {/* [날짜 교정] 글자에서 불필요한 부분만 잘라내어 출력 (하루 밀림 없음) */}
+                      {/* [날짜 교정] 날짜를 글자로만 인식하여 출력 (표준시 무시) */}
                       {String(log.date || '').split('T')[0].replace(/-/g, '. ')}
                     </div>
                     <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
