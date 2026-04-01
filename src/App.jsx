@@ -13,18 +13,18 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  // [설정] 구글 시트 URL을 여기에 넣어주세요
-  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
+  // [설정] 구글 시트 웹 앱 URL (여기에 복사한 주소를 입력하세요)
+  const GOOGLE_SHEET_URL = ""; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // 한국 시간 기준 YYYY-MM-DD 생성 (날짜 밀림 방지)
+  // 날짜 버그 수정: 로컬 시간 기준으로 YYYY-MM-DD 생성 (날짜가 하루 밀리지 않음)
   const getTodayKST = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
   const [newLog, setNewLog] = useState({ 
@@ -60,13 +60,15 @@ const App = () => {
     return n;
   };
 
+  // 조치 기록 가져오기 (에러 방지 강화)
   const fetchLogs = async () => {
     if (!GOOGLE_SHEET_URL) return;
     try {
       const response = await fetch(GOOGLE_SHEET_URL);
+      if (!response.ok) return;
       const data = await response.json();
       if (Array.isArray(data)) setMaintenanceLogs(data.reverse());
-    } catch (e) { console.error("데이터 로드 실패", e); }
+    } catch (e) { console.error("Logs update skip"); }
   };
 
   useEffect(() => {
@@ -88,19 +90,28 @@ const App = () => {
 
   const handleSaveLog = async (e) => {
     e.preventDefault();
-    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("모든 항목을 입력해주세요.");
+    if (!GOOGLE_SHEET_URL) return alert("API 주소를 설정해주세요.");
+    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("내용을 모두 채워주세요.");
     
     setIsSaving(true);
     try {
+      // POST 시 날짜 정보에서 불필요한 기호 제거
+      const payload = {
+        station: selection.station,
+        ...newLog,
+        date: newLog.date.split('T')[0] 
+      };
+
       await fetch(GOOGLE_SHEET_URL, {
         method: 'POST',
         mode: 'no-cors',
-        body: JSON.stringify({ station: selection.station, ...newLog })
+        body: JSON.stringify(payload)
       });
+      
       setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
-      setTimeout(() => fetchLogs(), 1500);
       alert("조치 기록이 저장되었습니다.");
-    } catch (e) { alert("저장 실패"); } finally { setIsSaving(false); }
+      setTimeout(() => fetchLogs(), 1000);
+    } catch (e) { alert("연결 오류가 발생했습니다."); } finally { setIsSaving(false); }
   };
 
   const filteredResults = useMemo(() => {
@@ -113,6 +124,7 @@ const App = () => {
   }, [selection, allData]);
 
   const currentUnitLogs = useMemo(() => {
+    if (!Array.isArray(maintenanceLogs)) return [];
     return maintenanceLogs.filter(log => {
       const matchStation = log.station === selection.station;
       const logUnitLabel = `${log.type} #${log.unitNum}`;
@@ -133,6 +145,16 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
+  const stationStats = useMemo(() => {
+    const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
+    return { elCount: stationData.filter(d => d.type === 'E/L').length, esCount: stationData.filter(d => d.type === 'E/S').length };
+  }, [selection.station, allData]);
+
+  const availableUnits = useMemo(() => {
+    const units = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type).map(item => item.unit);
+    return ['호기 선택', ...new Set(units)].sort();
+  }, [selection.station, selection.type, allData]);
+
   if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
@@ -142,7 +164,7 @@ const App = () => {
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block"><span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Shared System</span></div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
-          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
+          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
         </div>
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
@@ -159,7 +181,7 @@ const App = () => {
                 } else alert("비밀번호 불일치");
               }} className="space-y-6">
                 <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] outline-none placeholder:text-slate-900"/>
-                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm">확인</button>
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-500 shadow-lg">확인</button>
               </form>
             </div>
           </div>
@@ -169,57 +191,60 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-indigo-100">
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight">DTRO Archive</span></div>
-          <button onClick={() => { if (window.confirm("로그아웃 하시겠습니까?")) handleLogout(); }} className="text-[11px] font-black text-slate-400 hover:text-red-500 border border-slate-200 px-5 py-2.5 rounded-xl transition-all">Logout</button>
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight text-slate-900">DTRO Archive</span></div>
+          <button onClick={handleLogout} className="text-[11px] font-black text-slate-400 hover:text-red-500 border border-slate-200 px-5 py-2.5 rounded-xl transition-all">Logout</button>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
+        {/* 필터 섹션 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm">
-            <label className="text-sm font-black text-indigo-600 uppercase mb-4 block">01. LINE</label>
+          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">01. LINE</label>
             <div className="relative flex p-1 bg-slate-100 rounded-2xl h-12">
-              <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+              <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200/50" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
               <button onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-400'}`}>1호선</button>
               <button onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-400'}`}>2호선</button>
             </div>
           </div>
-          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm">
-            <label className="text-sm font-black text-indigo-600 uppercase mb-4 block">02. STATION</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none">
+          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">02. STATION</label>
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none cursor-pointer focus:border-indigo-500 outline-none">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
-          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm">
-            <label className="text-sm font-black text-indigo-600 uppercase mb-4 block">03. UNIT</label>
+          <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm space-y-4">
+            <label className="text-sm font-black text-indigo-600 uppercase tracking-widest">03. UNIT</label>
             <div className="flex gap-2">
               <div className="relative flex p-1 bg-slate-100 rounded-2xl h-12 flex-1">
-                <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+                <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200/50" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
                 <button onClick={() => setSelection({...selection, type: 'E/L', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
                 <button onClick={() => setSelection({...selection, type: 'E/S', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center cursor-pointer appearance-none">
+              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center appearance-none cursor-pointer outline-none focus:border-indigo-500">
                 {availableUnits.map(u => <option key={u} value={u} className="bg-white text-slate-900">{u}</option>)}
               </select>
             </div>
           </div>
         </section>
 
+        {/* 요약 & 차트 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase">역사 점검 요약</span></div>
+            <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-widest">역사 점검 요약</span></div>
             <div className="flex justify-around items-center">
               <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Elevator</span><p className={`text-3xl font-black ${stationStats.elCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.elCount}<span className="text-base ml-1 font-bold">건</span></p></div>
               <div className="w-[1px] h-12 bg-slate-100"></div>
               <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Escalator</span><p className={`text-3xl font-black ${stationStats.esCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.esCount}<span className="text-base ml-1 font-bold">건</span></p></div>
             </div>
           </section>
+
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-6"><PieChart size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase">[{selection.station}역] 검사항목 비중</span></div>
-            <div className="flex items-start gap-6">
+            <div className="flex items-center gap-3 mb-6"><PieChart size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase tracking-widest">[{selection.station}역] 검사항목 비중</span></div>
+            <div className="flex items-start gap-6 mb-2">
               <div className="w-24 h-24 flex-shrink-0">
                 <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
               </div>
@@ -241,6 +266,7 @@ const App = () => {
           </section>
         </div>
 
+        {/* 상세 내역 (기본 데이터) */}
         <div className="space-y-6">
           <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4">
@@ -256,7 +282,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* [개편] 현장 조치 기록 섹션 - 보라색 테마 및 레이아웃 최적화 */}
+        {/* 현장 조치 기록 섹션 */}
         <div className="space-y-6 mt-12 pb-20">
           <div className="flex items-center gap-4 px-3"><Wrench size={24} className="text-indigo-600" /><h3 className="text-lg font-black text-indigo-600 tracking-tight">현장 조치 기록</h3></div>
           
@@ -276,10 +302,10 @@ const App = () => {
                 <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/></div>
               </div>
               
-              {/* [교정] 날짜 선택기 - 너비를 100%로 고정하고 컨테이너 안으로 수납 */}
+              {/* [교정] 날짜 입력창: w-full 및 overflow-hidden 적용 */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
-                <div className="w-full box-border">
+                <div className="w-full overflow-hidden">
                   <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 appearance-none"/>
                 </div>
               </div>
@@ -287,11 +313,11 @@ const App = () => {
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase px-1">보완 및 조치사항</label>
-              <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm outline-none focus:border-indigo-500 h-32 resize-none"/>
+              <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm focus:border-indigo-500 h-32 resize-none outline-none"/>
             </div>
 
             <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100">
-              {isSaving ? "저장 중..." : <><PenLine size={18} className="inline mr-2 text-white"/> 조치 기록 저장</>}
+              {isSaving ? "저장 중..." : <><PenLine size={18} className="inline mr-2"/> 조치 기록 저장</>}
             </button>
           </form>
 
@@ -302,12 +328,12 @@ const App = () => {
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2">
                       <Calendar size={14}/> 
-                      {/* [날짜 교정] 문자열을 잘라 깔끔하게 출력 */}
+                      {/* [날짜 교정] T15:00... 제거 후 출력 */}
                       {String(log.date).split('T')[0].replace(/-/g, '. ')}
                     </div>
                     <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
                   </div>
-                  <div className="bg-slate-50 text-indigo-600 px-3 py-1 rounded-md text-[10px] font-black border border-indigo-100">점검자: {log.inspector}</div>
+                  <div className="bg-slate-50 text-indigo-600 px-3 py-1 rounded-md text-[10px] font-black border border-indigo-100 uppercase">점검자: {log.inspector}</div>
                 </div>
                 <p className="font-bold text-slate-700 text-[15px] leading-[1.8] break-keep">{log.content}</p>
               </div>
