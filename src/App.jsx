@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, MapPin, BarChart2, History, Zap, ChevronRight, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Activity } from 'lucide-react';
+import { Monitor, Calendar, BarChart2, History, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Trash2, Wrench, Settings, Edit3 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
@@ -13,14 +13,24 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
-  // [구글 시트 연동] 설정
-  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzpivH8gOq7TJtMIpRm6hqSd1N1-YrsJ1dr0JRxALC1pFsV3b5URFBqisERWW7pvmu6/exec"; 
+  // 구글 시트 설정
+  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [newLog, setNewLog] = useState({ date: new Date().toISOString().split('T')[0], content: '', inspector: '' });
+  
+  // 날짜 버그 수정: 한국 시간 기준 YYYY-MM-DD 생성
+  const getKSTDate = () => new Date().toLocaleDateString('sv-SE');
+
+  const [newLog, setNewLog] = useState({ 
+    date: getKSTDate(), 
+    type: 'E/L', 
+    unitNum: '', 
+    content: '', 
+    inspector: '' 
+  });
 
   const ADMIN_PASSWORD = "3650";
-  const SESSION_TIMEOUT = 5 * 60 * 1000; // 5분 세션
+  const SESSION_TIMEOUT = 5 * 60 * 1000;
 
   const lineData = {
     '1호선': ['설화명곡', '화원', '대곡', '진천', '월배', '상인', '월촌', '송현', '서부정류장', '대명', '안지랑', '현충로', '영대병원', '교대', '명덕', '반월당', '중앙로', '대구', '칠성시장', '신천', '동대구', '동구청', '아양교', '동촌', '해안', '방촌', '용계', '율하', '신기', '반야월', '각산', '안심', '대구한의대병원', '부호', '하양'],
@@ -45,27 +55,21 @@ const App = () => {
     return n;
   };
 
-  // 구글 시트에서 조치 기록 불러오기
   const fetchLogs = async () => {
     try {
       const response = await fetch(GOOGLE_SHEET_URL);
       const data = await response.json();
-      setMaintenanceLogs(data.reverse()); // 최신순 정렬
-    } catch (e) { console.error("Logs Load Failed", e); }
+      setMaintenanceLogs(data.reverse());
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
     const auth = localStorage.getItem('dtro_auth');
     const loginTime = localStorage.getItem('dtro_login_time');
     if (auth === 'true' && loginTime) {
-      const elapsed = Date.now() - parseInt(loginTime);
-      if (elapsed > SESSION_TIMEOUT) handleLogout();
-      else {
-        setPage('dashboard');
-        fetchLogs(); // 대시보드 진입 시 로그 로드
-      }
+      if (Date.now() - parseInt(loginTime) > SESSION_TIMEOUT) handleLogout();
+      else { setPage('dashboard'); fetchLogs(); }
     }
-
     const loadData = async () => {
       try {
         const response = await fetch('/data.json');
@@ -76,10 +80,9 @@ const App = () => {
     loadData();
   }, [page]);
 
-  // 구글 시트에 기록 저장하기
   const handleSaveLog = async (e) => {
     e.preventDefault();
-    if (!newLog.content || !newLog.inspector) return alert("보완사항과 점검자를 입력해주세요.");
+    if (!newLog.content || !newLog.inspector || !newLog.unitNum) return alert("모든 항목을 입력해주세요.");
     
     setIsSaving(true);
     try {
@@ -87,13 +90,12 @@ const App = () => {
         method: 'POST',
         body: JSON.stringify({
           station: selection.station,
-          unit: selection.unit,
           ...newLog
         })
       });
-      setNewLog({ ...newLog, content: '', inspector: '' });
-      await fetchLogs(); // 저장 후 즉시 목록 새로고침
-      alert("기록이 구글 시트에 안전하게 공유되었습니다.");
+      setNewLog({ ...newLog, content: '', inspector: '', unitNum: '' });
+      await fetchLogs();
+      alert("조치 기록이 저장되었습니다.");
     } catch (e) { alert("저장 실패"); } finally { setIsSaving(false); }
   };
 
@@ -106,11 +108,14 @@ const App = () => {
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [selection, allData]);
 
+  // [중요] 필터링된 조치 기록 (호기 선택 시 해당 호기만 노출)
   const currentUnitLogs = useMemo(() => {
-    return maintenanceLogs.filter(log => 
-      log.station === selection.station && 
-      (selection.unit === '호기 선택' || log.unit === selection.unit)
-    );
+    return maintenanceLogs.filter(log => {
+      const matchStation = log.station === selection.station;
+      const unitStr = `${log.type} #${log.unitNum}`;
+      const matchUnit = selection.unit === '호기 선택' || unitStr === selection.unit;
+      return matchStation && matchUnit;
+    });
   }, [selection, maintenanceLogs]);
 
   const stationChartData = useMemo(() => {
@@ -127,22 +132,6 @@ const App = () => {
     };
   }, [selection.station, allData]);
 
-  const representativeContent = useMemo(() => {
-    if (!hoveredCategory) return null;
-    const match = allData.find(d => normalizeStation(d.station) === normalizeStation(selection.station) && d.category === hoveredCategory);
-    return match ? match.content : null;
-  }, [hoveredCategory, selection.station, allData]);
-
-  const stationStats = useMemo(() => {
-    const stationData = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station));
-    return { elCount: stationData.filter(d => d.type === 'E/L').length, esCount: stationData.filter(d => d.type === 'E/S').length };
-  }, [selection.station, allData]);
-
-  const availableUnits = useMemo(() => {
-    const units = allData.filter(item => normalizeStation(item.station) === normalizeStation(selection.station) && item.type === selection.type).map(item => item.unit);
-    return ['호기 선택', ...new Set(units)].sort();
-  }, [selection.station, selection.type, allData]);
-
   if (isLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (page === 'landing') {
@@ -153,13 +142,13 @@ const App = () => {
           <div className="mb-8 px-5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full inline-block"><span className="text-indigo-400 text-[11px] font-black uppercase tracking-[0.4em]">DTRO Shared System</span></div>
           <h1 className="text-6xl md:text-8xl font-black text-white mb-10 tracking-tighter leading-[1.1]">DTRO <br /><span className="text-indigo-500">승강기 관리</span></h1>
           <p className="text-slate-400 text-lg md:text-xl mb-16 font-medium leading-relaxed">실제 검사 데이터 기반 운영 중</p>
-          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
+          <button onClick={() => setIsPwModalOpen(true)} className="group px-20 py-6 bg-white text-slate-950 rounded-full font-black text-xl hover:scale-105 transition-all flex items-center gap-4 mx-auto shadow-2xl">조회 시작 <Lock size={22} className="text-red-500" /></button>
         </div>
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
-            <div className="bg-slate-800/80 backdrop-blur-2xl w-full max-w-[320px] rounded-[2.5rem] p-8 border border-white/10 shadow-3xl relative animate-in fade-in zoom-in duration-300">
-              <button onClick={() => {setIsPwModalOpen(false); setPwInput("");}} className="absolute top-6 right-6 text-slate-600 hover:text-white"><X size={20}/></button>
-              <h3 className="text-white font-black text-lg mb-1">비밀번호 입력</h3>
+            <div className="bg-slate-800/80 backdrop-blur-2xl w-full max-w-[320px] rounded-[2.5rem] p-8 border border-white/10 shadow-3xl relative">
+              <button onClick={() => setIsPwModalOpen(false)} className="absolute top-6 right-6 text-slate-600 hover:text-white"><X size={20}/></button>
+              <h3 className="text-white font-black text-lg mb-6">비밀번호 입력</h3>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (pwInput === ADMIN_PASSWORD) {
@@ -169,7 +158,7 @@ const App = () => {
                   setPage('dashboard');
                 } else alert("비밀번호 불일치");
               }} className="space-y-6">
-                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] focus:border-indigo-600 outline-none placeholder:text-slate-900"/>
+                <input autoFocus type="password" inputMode="numeric" value={pwInput} onChange={(e) => setPwInput(e.target.value)} placeholder="••••" className="w-full bg-slate-950/50 border-2 border-white/5 rounded-2xl py-4 text-center text-2xl font-black text-indigo-500 tracking-[0.6em] outline-none placeholder:text-slate-900"/>
                 <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm">확인</button>
               </form>
             </div>
@@ -184,24 +173,24 @@ const App = () => {
       <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 p-5 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex justify-between items-center px-4">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md"><Monitor className="text-white" size={20} /></div><span className="font-black text-xl tracking-tight">DTRO Archive</span></div>
-          <button onClick={() => { if (window.confirm("로그아웃 하시겠습니까?")) handleLogout(); }} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-red-500 border border-slate-200 px-5 py-2.5 rounded-xl"><LogOut size={16}/> Logout</button>
+          <button onClick={() => { if (window.confirm("로그아웃 하시겠습니까?")) handleLogout(); }} className="flex items-center gap-2 text-[11px] font-black text-slate-400 hover:text-red-500 border border-slate-200 px-5 py-2.5 rounded-xl">Logout</button>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 상단 필터 (LINE, STATION, UNIT 크게) */}
+        {/* 상단 필터 섹션 (기존 로직 유지) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-sm font-black text-indigo-600 uppercase">01. LINE</label>
             <div className="relative flex p-1 bg-slate-100 rounded-2xl h-12">
-              <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200/50" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+              <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm" style={{ left: selection.line === '2호선' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
               <button onClick={() => setSelection({...selection, line: '1호선', station: lineData['1호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black ${selection.line === '1호선' ? 'text-indigo-600' : 'text-slate-400'}`}>1호선</button>
               <button onClick={() => setSelection({...selection, line: '2호선', station: lineData['2호선'][0], unit: '호기 선택'})} className={`relative z-10 flex-1 text-[11px] font-black ${selection.line === '2호선' ? 'text-indigo-600' : 'text-slate-400'}`}>2호선</button>
             </div>
           </div>
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] space-y-4 shadow-sm">
             <label className="text-sm font-black text-indigo-600 uppercase">02. STATION</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black focus:border-indigo-600 outline-none text-slate-900 text-center appearance-none">
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
@@ -209,7 +198,7 @@ const App = () => {
             <label className="text-sm font-black text-indigo-600 uppercase">03. UNIT</label>
             <div className="flex gap-2">
               <div className="relative flex p-1 bg-slate-100 rounded-2xl h-12 flex-1">
-                <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm border border-slate-200/50" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
+                <div className="absolute top-1 bottom-1 bg-white rounded-xl transition-all duration-300 shadow-sm" style={{ left: selection.type === 'E/S' ? 'calc(50% + 2px)' : '4px', width: 'calc(50% - 6px)' }} />
                 <button onClick={() => setSelection({...selection, type: 'E/L', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
                 <button onClick={() => setSelection({...selection, type: 'E/S', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
@@ -220,7 +209,7 @@ const App = () => {
           </div>
         </section>
 
-        {/* 요약 및 차트 (제목 크게) */}
+        {/* 요약 및 차트 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase">역사 점검 요약</span></div>
@@ -248,13 +237,13 @@ const App = () => {
             {hoveredCategory && (
               <div className="mt-4 p-4 rounded-2xl border bg-indigo-50 border-indigo-100 animate-in fade-in">
                 <div className="flex items-center gap-2 mb-1.5"><Info size={12} className="text-indigo-500" /><span className="text-[9px] font-bold uppercase text-indigo-600">검사항목 {hoveredCategory} 대표 내역</span></div>
-                <p className="text-[11px] leading-relaxed text-indigo-900 font-medium">{representativeContent}</p>
+                <p className="text-[11px] leading-relaxed text-indigo-900 font-medium">{allData.find(d => normalizeStation(d.station) === normalizeStation(selection.station) && d.category === hoveredCategory)?.content}</p>
               </div>
             )}
           </section>
         </div>
 
-        {/* 상세 내역 - 기존 검사항목 데이터 */}
+        {/* 상세 내역 리스트 (검사항목) */}
         <div className="space-y-6">
           <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
           <div className="space-y-4">
@@ -270,29 +259,57 @@ const App = () => {
           </div>
         </div>
 
-        {/* 구글 시트 공유 기록 섹션 */}
+        {/* [개편] 현장 조치 기록 섹션 */}
         <div className="space-y-6 mt-12">
-          <div className="flex items-center gap-4 px-3"><Activity size={24} className="text-emerald-600" /><h3 className="text-lg font-black text-slate-900 tracking-tight">현장 조치 및 보완 기록 (전사 공유)</h3></div>
+          <div className="flex items-center gap-4 px-3"><Wrench size={24} className="text-indigo-600" /><h3 className="text-lg font-black text-indigo-600 tracking-tight">현장 조치 기록</h3></div>
+          
           <form onSubmit={handleSaveLog} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2"><label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label><input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-emerald-500 outline-none"/></div>
-              <div className="space-y-2"><label className="text-[10px] font-bold text-slate-400 uppercase px-1">점검자 (기계)</label><div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="성명을 입력하세요" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm focus:border-emerald-500 outline-none"/></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 장비 및 호기 선택 */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase px-1">대상 장비</label>
+                <div className="flex gap-2">
+                  <select value={newLog.type} onChange={(e) => setNewLog({...newLog, type: e.target.value})} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500">
+                    <option value="E/L">E/L (엘리베이터)</option>
+                    <option value="E/S">E/S (에스컬레이터)</option>
+                  </select>
+                  <input type="number" placeholder="호기 번호" value={newLog.unitNum} onChange={(e) => setNewLog({...newLog, unitNum: e.target.value})} className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/>
+                </div>
+              </div>
+              {/* 점검자 */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase px-1">점검자</label>
+                <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:border-indigo-500 outline-none"/></div>
+              </div>
+              {/* 조치 날짜 (너비 최적화) */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
+                <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full md:w-1/2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:border-indigo-500 outline-none"/>
+              </div>
             </div>
-            <div className="space-y-2"><label className="text-[10px] font-bold text-slate-400 uppercase px-1">보완 및 조치사항</label><textarea placeholder="조치한 내용을 상세히 기록하십시오. 입력 즉시 전사원이 공유하는 구글 시트에 저장됩니다." value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm focus:border-emerald-500 outline-none h-32 resize-none"/></div>
-            <button type="submit" disabled={isSaving} className="w-full bg-emerald-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-emerald-700 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-200">
-              {isSaving ? "데이터 전송 중..." : <><PenLine size={18}/> 기록 저장 및 실시간 공유</>}
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase px-1">보완 및 조치사항</label>
+              <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm focus:border-indigo-500 outline-none h-32 resize-none"/>
+            </div>
+            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-100">
+              {isSaving ? "데이터 전송 중..." : <><PenLine size={18} className="text-white"/> 조치 기록 저장</>}
             </button>
           </form>
 
+          {/* 조치 기록 리스트 (수정/삭제 버튼 포함) */}
           <div className="space-y-4 pb-20">
             {currentUnitLogs.length > 0 ? currentUnitLogs.map((log, idx) => (
-              <div key={idx} className="bg-emerald-50/50 p-8 rounded-[2.5rem] border border-emerald-100 shadow-sm animate-in fade-in">
-                <div className="flex justify-between items-start mb-5 pb-5 border-b border-emerald-100">
+              <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm animate-in fade-in relative group">
+                <div className="absolute top-6 right-6 flex gap-2">
+                  <button className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"><Edit3 size={18}/></button>
+                  <button className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+                </div>
+                <div className="flex justify-between items-start mb-5 pb-5 border-b border-slate-100">
                   <div className="space-y-1">
-                    <div className="text-emerald-600 font-black text-xs flex items-center gap-2"><Calendar size={14}/> {log.date}</div>
-                    <div className="font-black text-slate-800 text-lg">{log.unit} 조치 기록</div>
+                    <div className="text-indigo-600 font-black text-xs flex items-center gap-2"><Calendar size={14}/> {log.date}</div>
+                    <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
                   </div>
-                  <div className="bg-white text-emerald-600 px-3 py-1 rounded-md text-[10px] font-black border border-emerald-100">점검자: {log.inspector}</div>
+                  <div className="bg-slate-50 text-indigo-600 px-3 py-1 rounded-md text-[10px] font-black border border-indigo-100">점검자: {log.inspector}</div>
                 </div>
                 <p className="font-bold text-slate-700 text-[15px] leading-[1.8] break-keep">{log.content}</p>
               </div>
