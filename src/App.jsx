@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Monitor, Calendar, History, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Trash2, Wrench, Edit3 } from 'lucide-react';
+import { Monitor, Calendar, History, Lock, X, LogOut, CheckCircle, PieChart, Info, PenLine, User, Wrench } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
@@ -13,14 +13,18 @@ const App = () => {
   const [pwInput, setPwInput] = useState("");
   const [hoveredCategory, setHoveredCategory] = useState(null);
   
+  // [설정] 구글 시트 URL을 여기에 넣어주세요
   const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzUI-sL1WSntKXzCuHFHYSYbuTpBimKSq4MTNpO8WA5maX5Zy1ZD9CZBFszfU9QFqmR/exec"; 
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // [날짜 교정] 한국 시간 기준으로 순수 날짜 문자열(YYYY-MM-DD)만 생성하는 함수
+  // 한국 시간 기준 YYYY-MM-DD 생성 (날짜 밀림 방지)
   const getTodayKST = () => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const [newLog, setNewLog] = useState({ 
@@ -62,7 +66,7 @@ const App = () => {
       const response = await fetch(GOOGLE_SHEET_URL);
       const data = await response.json();
       if (Array.isArray(data)) setMaintenanceLogs(data.reverse());
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("데이터 로드 실패", e); }
   };
 
   useEffect(() => {
@@ -108,11 +112,9 @@ const App = () => {
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [selection, allData]);
 
-  // [중요] 호기 선택에 따른 조치 기록 필터링 로직 강화
   const currentUnitLogs = useMemo(() => {
     return maintenanceLogs.filter(log => {
       const matchStation = log.station === selection.station;
-      // 시트의 장비명과 호기번호를 합쳐서 상단 필터 양식(E/L #2)과 비교
       const logUnitLabel = `${log.type} #${log.unitNum}`;
       const matchUnit = selection.unit === '호기 선택' || logUnitLabel === selection.unit;
       return matchStation && matchUnit;
@@ -176,7 +178,6 @@ const App = () => {
       </nav>
 
       <main className="max-w-4xl mx-auto p-6 md:p-10 space-y-8">
-        {/* 필터 섹션 (기존 동일) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm">
             <label className="text-sm font-black text-indigo-600 uppercase mb-4 block">01. LINE</label>
@@ -188,7 +189,7 @@ const App = () => {
           </div>
           <div className="bg-white border border-slate-200 py-4 px-6 rounded-[2.5rem] shadow-sm">
             <label className="text-sm font-black text-indigo-600 uppercase mb-4 block">02. STATION</label>
-            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none cursor-pointer">
+            <select value={selection.station} onChange={(e) => setSelection({...selection, station: e.target.value, unit: '호기 선택'})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 text-center appearance-none">
               {lineData[selection.line].map(s => <option key={s} value={s}>{s}역</option>)}
             </select>
           </div>
@@ -200,16 +201,62 @@ const App = () => {
                 <button onClick={() => setSelection({...selection, type: 'E/L', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/L' ? 'text-indigo-600' : 'text-slate-400'}`}>E/L</button>
                 <button onClick={() => setSelection({...selection, type: 'E/S', unit: '호기 선택'})} className={`relative z-10 flex-1 text-[10px] font-black ${selection.type === 'E/S' ? 'text-indigo-600' : 'text-slate-400'}`}>E/S</button>
               </div>
-              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center appearance-none cursor-pointer">
+              <select value={selection.unit} onChange={(e) => setSelection({...selection, unit: e.target.value})} className="flex-[1.2] bg-slate-50 border border-slate-200 rounded-2xl px-2 text-[10px] font-black text-slate-900 text-center cursor-pointer appearance-none">
                 {availableUnits.map(u => <option key={u} value={u} className="bg-white text-slate-900">{u}</option>)}
               </select>
             </div>
           </div>
         </section>
 
-        {/* [중략] 요약 및 차트, 상세 내역 리스트는 기존 코드 유지 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-3 mb-8"><CheckCircle size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase">역사 점검 요약</span></div>
+            <div className="flex justify-around items-center">
+              <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Elevator</span><p className={`text-3xl font-black ${stationStats.elCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.elCount}<span className="text-base ml-1 font-bold">건</span></p></div>
+              <div className="w-[1px] h-12 bg-slate-100"></div>
+              <div className="text-center"><span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Escalator</span><p className={`text-3xl font-black ${stationStats.esCount === 0 ? 'text-slate-200' : 'text-slate-900'}`}>{stationStats.esCount}<span className="text-base ml-1 font-bold">건</span></p></div>
+            </div>
+          </section>
+          <section className="bg-white border border-slate-200 py-6 px-8 rounded-[2.5rem] shadow-sm flex flex-col">
+            <div className="flex items-center gap-3 mb-6"><PieChart size={20} className="text-indigo-600" /><span className="text-base font-black text-indigo-600 uppercase">[{selection.station}역] 검사항목 비중</span></div>
+            <div className="flex items-start gap-6">
+              <div className="w-24 h-24 flex-shrink-0">
+                <Doughnut data={stationChartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%', onHover: (evt, elements) => { if (elements.length > 0) setHoveredCategory(stationChartData.labels[elements[0].index]); else setHoveredCategory(null); } }} />
+              </div>
+              <div className="flex-1 space-y-1.5 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
+                {stationChartData.labels.map((label, i) => (
+                  <div key={label} onMouseEnter={() => setHoveredCategory(label)} onMouseLeave={() => setHoveredCategory(null)} className={`flex items-center justify-between p-1 rounded-md transition-all ${hoveredCategory === label ? 'bg-indigo-50' : ''}`}>
+                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: ['#4F46E5', '#6366F1', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF'][i % 6] }}></div><span className="text-[9px] font-bold text-slate-500">검사항목 {label}</span></div>
+                    <span className="text-[10px] font-black text-slate-800">{stationChartData.values[i]}건</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {hoveredCategory && (
+              <div className="mt-4 p-4 rounded-2xl border bg-indigo-50 border-indigo-100 animate-in fade-in">
+                <div className="flex items-center gap-2 mb-1.5"><Info size={12} className="text-indigo-500" /><span className="text-[9px] font-bold uppercase text-indigo-600">검사항목 {hoveredCategory} 대표 내역</span></div>
+                <p className="text-[11px] leading-relaxed text-indigo-900 font-medium">{allData.find(d => normalizeStation(d.station) === normalizeStation(selection.station) && d.category === hoveredCategory)?.content}</p>
+              </div>
+            )}
+          </section>
+        </div>
 
-        {/* [수정] 현장 조치 기록 섹션 (레이아웃 & 날짜 교정) */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 px-3"><History className="text-indigo-600" size={24} /><h3 className="text-lg font-black text-slate-900 tracking-tight">상세 내역 - {selection.station}역</h3></div>
+          <div className="space-y-4">
+            {filteredResults.map((item) => (
+              <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm transition-all hover:border-indigo-100">
+                <div className="flex justify-between items-start mb-5 pb-5 border-b border-slate-100">
+                  <div className="space-y-1"><div className="text-indigo-600 font-black text-xs flex items-center gap-2"><Calendar size={14}/> {item.date}</div><div className="font-black text-slate-800 text-lg">{item.unit}</div></div>
+                  <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-md text-[9px] font-black tracking-widest border border-slate-200 uppercase">검사항목 {item.category}</div>
+                </div>
+                <p className="font-bold text-slate-600 text-[16px] leading-[1.8] break-keep">{item.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* [개편] 현장 조치 기록 섹션 - 보라색 테마 및 레이아웃 최적화 */}
         <div className="space-y-6 mt-12 pb-20">
           <div className="flex items-center gap-4 px-3"><Wrench size={24} className="text-indigo-600" /><h3 className="text-lg font-black text-indigo-600 tracking-tight">현장 조치 기록</h3></div>
           
@@ -218,21 +265,21 @@ const App = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">대상 장비</label>
                 <div className="flex gap-2">
-                  <select value={newLog.type} onChange={(e) => setNewLog({...newLog, type: e.target.value})} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none">
+                  <select value={newLog.type} onChange={(e) => setNewLog({...newLog, type: e.target.value})} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500">
                     <option value="E/L">E/L (엘리베이터)</option><option value="E/S">E/S (에스컬레이터)</option>
                   </select>
-                  <input type="number" placeholder="호기" value={newLog.unitNum} onChange={(e) => setNewLog({...newLog, unitNum: e.target.value})} className="w-20 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none"/>
+                  <input type="number" placeholder="호기" value={newLog.unitNum} onChange={(e) => setNewLog({...newLog, unitNum: e.target.value})} className="w-20 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/>
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">점검자</label>
-                <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none"/></div>
+                <div className="relative"><User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input type="text" placeholder="성명" value={newLog.inspector} onChange={(e) => setNewLog({...newLog, inspector: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-bold outline-none focus:border-indigo-500"/></div>
               </div>
               
-              {/* [교정] 조치 날짜 칸 - 너비를 컨테이너에 딱 맞게 제한 */}
+              {/* [교정] 날짜 선택기 - 너비를 100%로 고정하고 컨테이너 안으로 수납 */}
               <div className="space-y-2 md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase px-1">조치 날짜</label>
-                <div className="w-full max-w-full overflow-hidden">
+                <div className="w-full box-border">
                   <input type="date" value={newLog.date} onChange={(e) => setNewLog({...newLog, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 appearance-none"/>
                 </div>
               </div>
@@ -240,36 +287,29 @@ const App = () => {
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase px-1">보완 및 조치사항</label>
-              <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm outline-none h-32 resize-none"/>
+              <textarea placeholder="조치 내용을 상세히 기록" value={newLog.content} onChange={(e) => setNewLog({...newLog, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm outline-none focus:border-indigo-500 h-32 resize-none"/>
             </div>
 
-            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg">
-              {isSaving ? "데이터 전송 중..." : <><PenLine size={18} className="inline mr-2 text-white"/> 조치 기록 저장</>}
+            <button type="submit" disabled={isSaving} className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black text-sm hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100">
+              {isSaving ? "저장 중..." : <><PenLine size={18} className="inline mr-2 text-white"/> 조치 기록 저장</>}
             </button>
           </form>
 
-          {/* 조치 기록 리스트 (수정/삭제 버튼 포함) */}
           <div className="space-y-4">
             {currentUnitLogs.length > 0 ? currentUnitLogs.map((log, idx) => (
-              <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative group animate-in fade-in">
-                {/* [신규] 우측 상단 수정/삭제 버튼 */}
-                <div className="absolute top-6 right-6 flex gap-2">
-                  <button onClick={() => alert('수정 기능 준비중입니다.')} className="p-2 bg-slate-50 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 size={16}/></button>
-                  <button onClick={() => alert('삭제 기능 준비중입니다.')} className="p-2 bg-slate-50 text-red-500 rounded-lg hover:bg-red-50 transition-colors"><Trash2 size={16}/></button>
-                </div>
-                
+              <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm animate-in fade-in">
                 <div className="flex justify-between items-start mb-5 pb-5 border-b border-slate-100">
                   <div className="space-y-1">
                     <div className="text-indigo-600 font-black text-xs flex items-center gap-2">
                       <Calendar size={14}/> 
-                      {/* [날짜 교정] 복잡한 시간 문자열 제거 후 출력 */}
+                      {/* [날짜 교정] 문자열을 잘라 깔끔하게 출력 */}
                       {String(log.date).split('T')[0].replace(/-/g, '. ')}
                     </div>
                     <div className="font-black text-slate-800 text-lg">{log.type} #{log.unitNum} 조치 기록</div>
                   </div>
                   <div className="bg-slate-50 text-indigo-600 px-3 py-1 rounded-md text-[10px] font-black border border-indigo-100">점검자: {log.inspector}</div>
                 </div>
-                <p className="font-bold text-slate-700 text-[15px] leading-[1.8] break-keep pr-10">{log.content}</p>
+                <p className="font-bold text-slate-700 text-[15px] leading-[1.8] break-keep">{log.content}</p>
               </div>
             )) : <div className="text-center py-16 bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-bold">등록된 현장 조치 기록이 없습니다.</div>}
           </div>
